@@ -6,7 +6,10 @@
 #SBATCH -o call_variants.out
 #SBATCH -e call_variants.err
 
+
 ref_dir=$1
+wildtype=$2
+paftools=${3}
 cd ${ref_dir}
 
 # for every lineage go to dir with sampeld fasta files
@@ -15,9 +18,9 @@ while read lineage; do \
     # for every fasta file
     for fasta in *.fa; do \
         # align and sort, zip and index resulting vcf
-        # install minimap2, k8 and paftools.js all via https://github.com/lh3/minimap2/tree/master/misc
+        # install minimap2, k8 and paftools.js all via https://github.com/lh3/minimap2/tree/master/misc (see readme)
         # TODO: add minimap2, k8 temporarily to $PATH via export PATH="$PATH:`pwd`:`pwd`/misc"
-        minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs $HOME/Dokumente/RKI/Internship/wildtype/NC_045512.2.fasta $fasta 2>${fasta%.fa}.paftools.log | sort -k6,6 -k8,8n > ${fasta%.fa}.paf && k8 $HOME/Dokumente/RKI/sc2_sewage/minimap2/misc/paftools.js call -s ${fasta%.fa} -L 100 -f /home/eva/Dokumente/RKI/Internship/wildtype/NC_045512.2.fasta ${fasta%.fa}.paf > ${fasta%.fa}.vcf 2>>${fasta%.fa}.paftools.log;
+        minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs $HOME ${wildtype} $fasta 2>${fasta%.fa}.paftools.log | sort -k6,6 -k8,8n > ${fasta%.fa}.paf && k8 ${paftools} call -s ${fasta%.fa} -L 100 -f ${wildtype} ${fasta%.fa}.paf > ${fasta%.fa}.vcf 2>>${fasta%.fa}.paftools.log;
         bgzip -f ${fasta%.fa}.vcf;
         bcftools index -f ${fasta%.fa}.vcf.gz;
     done;

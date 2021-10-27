@@ -1,23 +1,35 @@
 #!/bin/bash
 
-
-echo "Step 1: Build a reference set" >
-# pre-select based on nonN counts and country
-#python pipeline/preprocess_references.py -m metadata.tsv -f sequences_germany_2021_10_01.fasta --country Germany
-# call variants
-#pipeline/call_variants.sh seqs_per_lineage
-# select sequences per lineage such that each typical mutation with at least 50% frequency is captured at least once
-#python pipeline/select_samples.py --vcf seqs_per_lineage/*_merged.vcf.gz --freq seqs_per_lineage/*_merged.frq -m metadata.tsv -f sequences_germany_2021_10_01.fasta -l seqs_per_lineage/lineages.txt -o reference_set
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+PAFTOOLS="/home/eva/Downloads/minimap2-master/misc/paftools.js"
+META=$1
+FASTA=$2
+REFERENCE=$3
+QUERY=$4
+OUTDIR=$5
+LOG_FILE="${OUTDIR}/sc2_sewage.log"
+mkdir -p $OUTDIR
+touch $LOG_FILE
+exec &> >(tee "$LOG_FILE")
+echo "Step 1: Build a reference set"
+echo ">>> pre-select based on nonN counts and country"
+python ${SCRIPTPATH}/pipeline_baymlab/preprocess_references.py -m ${META} -f ${FASTA} --country Germany -o ${OUTDIR}/seqs_per_lineage --log ${LOG_FILE}
+echo ">>> call variants: find log info in ${OUTDIR}/seqs_per_lineage/<FASTA>.paftools.log"
+${SCRIPTPATH}/pipeline_baymlab/call_variants.sh ${OUTDIR}/seqs_per_lineage ${REFERENCE} ${PAFTOOLS}
+echo ">>> select sequences per lineage such that each typical mutation with at least 50% frequency is captured at least once"
+python ${SCRIPTPATH}/pipeline_baymlab/select_samples.py --vcf ${OUTDIR}/seqs_per_lineage/*_merged.vcf.gz --freq ${OUTDIR}/seqs_per_lineage/*_merged.frq -m ${META} -f ${FASTA} -l ${OUTDIR}/seqs_per_lineage/lineages.txt -o ${OUTDIR}/reference_set --log ${LOG_FILE}
 
 
 # Step 2: Preprocess seq data???
 
 
-# Step 3: Predict variant abundances
-#kallisto index -i reference_set/sequences.kallisto_idx reference_set/sequences.fasta
-#for sample in GR NR SL;
-#do
-#  kallisto quant -i reference_set/sequences.kallisto_idx -o kallisto_out/${sample} --single -l 200 -s 20 -t 20 wastewater_reads/sra_${sample}.fastq.gz
+echo "Step 2: Predict variant abundances"
+mkdir -p ${OUTDIR}/kallisto_out
+kallisto index -i ${OUTDIR}/reference_set/sequences.kallisto_idx ${OUTDIR}/reference_set/sequences.fasta
+for sample in SL;
+do
+  kallisto quant -i ${OUTDIR}/reference_set/sequences.kallisto_idx -o ${OUTDIR}/kallisto_out/${sample} --single -l 200 -s 20 -t 20 ${QUERY}/sra_${sample}.fastq.gz 
   ## summarize lineage abundances
-#  python pipeline/output_abundances.py --metadata reference_set/metadata.tsv kallisto_out/${sample}/abundance.tsv
-#done
+  python ${SCRIPTPATH}/pipeline_baymlab/output_abundances.py --metadata ${OUTDIR}/reference_set/metadata.tsv ${OUTDIR}/kallisto_out/${sample}/abundance.tsv --log ${LOG_FILE}
+done

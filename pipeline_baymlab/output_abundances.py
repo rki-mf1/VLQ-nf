@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import argparse
+###########################
+# IMPORTS
+###########################
+import sys, os, argparse, logging
 import pandas as pd
 
-
+###########################
+# FUNCTIONS
+###########################
 def main():
     parser = argparse.ArgumentParser(description="Plot abundances from file.")
     parser.add_argument('abundances', type=str, help="abundance file")
@@ -13,7 +16,15 @@ def main():
     parser.add_argument('-m', dest='min_ab', type=float, default=0, help="minimal frequency (%) to output variant")
     parser.add_argument('--voc', dest='voc', type=str, help="comma-separated list of strains of interest, output abundance for these only")
     parser.add_argument('-o', dest='outfile', type=str, help="write output to tsv file")
+    parser.add_argument('--log', dest='log', type=str, help="path to log file")
     args = parser.parse_args()
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    output_file_handler = logging.FileHandler(args.log, mode='a')
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(output_file_handler)
+    logger.addHandler(stdout_handler)
 
     if args.metadata:
         df = pd.read_csv(args.metadata, sep='\t', header=0, dtype=str)
@@ -41,7 +52,7 @@ def main():
                 abundance_format = "salmon"
                 continue
             if abundance_format == "":
-                print("ERROR: abundance file format not recognized as kallisto or salmon")
+                logger.debug("ERROR: abundance file format not recognized as kallisto or salmon")
                 sys.exit(1)
             seqname = line[0]
             if args.metadata:
@@ -77,6 +88,8 @@ def main():
     return
 
 
-
+###########################
+# MAIN
+###########################
 if __name__ == "__main__":
     sys.exit(main())

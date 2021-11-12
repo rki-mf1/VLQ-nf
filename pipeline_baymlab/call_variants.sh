@@ -5,7 +5,9 @@
 #SBATCH --mem=10G
 #SBATCH -o call_variants.out
 #SBATCH -e call_variants.err
-
+##############################################
+# Source: https://github.com/baymlab/wastewater_analysis
+#############################################
 
 ref_dir=$1
 wildtype=$2
@@ -20,7 +22,7 @@ while read lineage; do \
         # align and sort, zip and index resulting vcf
         # install minimap2, k8 and paftools.js all via https://github.com/lh3/minimap2/tree/master/misc (see readme)
         # TODO: add minimap2, k8 temporarily to $PATH via export PATH="$PATH:`pwd`:`pwd`/misc"
-        minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs $HOME ${wildtype} $fasta 2>${fasta%.fa}.paftools.log | sort -k6,6 -k8,8n > ${fasta%.fa}.paf && k8 ${paftools} call -s ${fasta%.fa} -L 100 -f ${wildtype} ${fasta%.fa}.paf > ${fasta%.fa}.vcf 2>>${fasta%.fa}.paftools.log;
+        minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs ${wildtype} $fasta 2>${fasta%.fa}.paftools.log | sort -k6,6 -k8,8n > ${fasta%.fa}.paf && k8 ${paftools} call -s ${fasta%.fa} -L 100 -f ${wildtype} ${fasta%.fa}.paf > ${fasta%.fa}.vcf 2>>${fasta%.fa}.paftools.log;
         bgzip -f ${fasta%.fa}.vcf;
         bcftools index -f ${fasta%.fa}.vcf.gz;
     done;

@@ -16,17 +16,16 @@ import datetime as dt
 
 ################################################
 # FUNCTIONS
-# TODO: Make database usage more adaptive (allow user to choose a single source or both dbs)
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Preprocess reference collection: randomly select samples and write into individual files in lineage-specific directories.")
     parser.add_argument('-gisaid, --gisaid', dest='gisaid', nargs='*', type=str, help="Specify paths to gisaid metadata tsv file and sequence fasta file")
     parser.add_argument('-desh, --desh', dest='desh', nargs='*', type=str, help="Specify paths to desh sample and lineage metadata csv files and desh sequence fasta file")
-    parser.add_argument('-epi, --desh_epi', dest='desh_epi', type=str, help="Specify path to csv file containing EPI ISL ids for the desh data set")
+    parser.add_argument('-desh_epi, --desh_epi', dest='desh_epi', type=str, help="Specify path to csv file containing EPI ISL ids for the desh data set")
     parser.add_argument('--country', dest='country', type=str, nargs='*', help="only consider sequences found in specified country")
     parser.add_argument('--startdate', dest='startdate', type=str, help="only consider sequences found on or after this date; input should be ISO format")
     parser.add_argument('--enddate', dest='enddate', type=str, help="only consider sequences found on or before this date; input should be ISO format")
-    #parser.add_argument('--state', dest='state', type=str, help="only consider sequences found in specified state")
+    parser.add_argument('--state', dest='state', type=str, help="only consider sequences found in specified state")
     parser.add_argument('--min_len', dest='min_len', type=int, default=29500, help="Don't select sequences with less than the specified minimal number of non-ambiguous nucleotides.")
     parser.add_argument('-k', dest='select_k', type=int, default=1000, help="randomly select 1000 sequences per lineage")
     parser.add_argument('--seed', dest='seed', default=0, type=int, help="random seed for sequence selection")
@@ -148,8 +147,7 @@ def read_filter_gisaid(metadata_file, epi_isl_file, country_filter):
     df["date"] = pd.to_datetime(df["Collection date"], yearfirst=True)
 
     # remove duplicate sequences
-    # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
-    df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
+    df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False) # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
     # add fasta sequence header
     df['fasta_id'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
     df.rename(columns={'Accession ID':'record_id'}, inplace=True)
@@ -185,7 +183,6 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     desh_df['date'] = pd.to_datetime(desh_df['DATE_DRAW'], yearfirst=True)
 
     # remove duplicate sequences
-    # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
     desh_df.drop_duplicates(subset=['IMS_ID'], inplace=True, keep=False, ignore_index=True)
 
     # rename IMS_ID, add fasta_id column
@@ -195,9 +192,7 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date']]
 
 
-# Idea :
-# input list of fasta files and iterate or apply function to each fasta file and update selection_dict by removing already visited header id
-# let's wait until transforming pipeline into nextflow workflow
+
 def get_sequences(fasta, selection_dict, outdir):
     """
     Write selected sequences from fasta file to separate fasta files in outdir based on

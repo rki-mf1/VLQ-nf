@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+##############################################
+# Source: https://github.com/baymlab/wastewater_analysis
+#############################################
+
 ###########################
 # IMPORTS
 ###########################
@@ -56,7 +60,7 @@ def main():
                 sys.exit(1)
             seqname = line[0]
             if args.metadata:
-                variant = df.loc[df["seq_name"] == seqname]["Pango lineage"]
+                variant = df.loc[df["fasta_id"] == seqname]["lineage"]
                 variant = variant.iloc[0]
             else:
                 variant = seqname

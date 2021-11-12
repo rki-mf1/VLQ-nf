@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+##############################################
+# Source: https://github.com/baymlab/wastewater_analysis
+#############################################
+
 #############################################
 # IMPORTS
 ##############################################
@@ -13,10 +17,8 @@ import vcf
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Build reference set consisting of a selection of samples per pangolin lineage.")
+    parser.add_argument('-f, --fasta', dest='fasta_in', nargs='*', type=str, help="fasta files representing full gisaid and desh sequence databases")
     parser.add_argument('--vcf', required=True, type=str, nargs='+', help="vcf files per lineage")
-    parser.add_argument('-m, --metadata', dest='metadata', type=str, help="metadata tsv file for full sequence database")
-    parser.add_argument('-f, --fasta', dest='fasta_in', type=str, help="fasta file representing full sequence database")
-    parser.add_argument('-l, --lineages', dest='lineages', type=str, help="txt file with the lineages that are appropriately supported by qualitative sequences")
     parser.add_argument('--freq', required=True, type=str, nargs='+', help="allele frequency files per lineage")
     parser.add_argument('--min_aaf', default=0.5, type=float, help="minimal alternative allele frequency (AAF) to consider variation")
     parser.add_argument('--max_per_lineage', default=100, type=int, help="select at most k sequences per lineage")
@@ -24,6 +26,7 @@ def main():
     parser.add_argument('--log', dest='log', type=str, help="path to log file")
     args = parser.parse_args()
 
+    global logger
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     output_file_handler = logging.FileHandler(args.log, mode='a')
@@ -37,17 +40,14 @@ def main():
     except FileExistsError:
         pass
 
-    # read meta
-    full_df = read_metadata(args.metadata, args.lineages)
-    # Select references per pango lineage
-    selection_df = select_ref_genomes(full_df, args.max_per_lineage, args.vcf,
+    # Read meta
+    # Select reference sequences per pango lineage and write to separate fasta files
+    metadata_df = pd.read_csv(args.outdir+'/seqs_per_lineage/metadata.tsv', sep='\t')
+    selection_df = select_ref_genomes(metadata_df, args.max_per_lineage, args.vcf,
                                       args.freq, args.min_aaf)
-    # Write metadata of selected samples to new tsv
-    metadata_out = args.outdir + "/metadata.tsv"
-    selection_df.to_csv(metadata_out, sep='\t', index=False)
-    logger.debug("Metadata for selected sequences is in {}".format(metadata_out))
-    # Filter fasta according to selection and write new fasta
-    fasta_out = args.outdir + "/sequences.fasta"
+
+    # Filter collectino of input fasta sequences according to selection and write new fasta
+    fasta_out = args.outdir + "/reference_set/sequences.fasta"
     filter_fasta(args.fasta_in, fasta_out, selection_df)
     logger.debug("Selected sequences written to {}".format(fasta_out))
 
@@ -55,46 +55,13 @@ def main():
 
 
 
-def read_metadata(metadata_file, lineages_with_sequences):
-    """
-    Read metadata from tsv into dataframe
-    """
-    df = pd.read_csv(metadata_file, sep='\t', header=0, dtype=str)
-    lineages = list(map(str.strip, open(lineages_with_sequences,'r').readlines()))
-
-    # ensure correct data types for calculating number of non-ambiguous bases
-    df['Sequence length'] = df['Sequence length'].astype(float)
-    # remove samples wich have no information on N content
-    df = df[df["N-Content"].notna()]
-    df['N-Content'] = df['N-Content'].astype(float)
-    # remove samples wich have no pangolin lineage assigned (NaN or None)
-    df = df[df["Pango lineage"].notna()]
-    df = df[df["Pango lineage"] != "None"]
-    # adjust date representation in dataframe
-    df["date"] = df["Collection date"]
-    df["date"] = pd.to_datetime(df.date, yearfirst=True)
-
-    # add field with number of N's in sequence
-    df['nonN_count'] = (1-df["N-Content"])*df["Sequence length"]
-    # add fasta sequence header
-    df['seq_name'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
-    # use only samples that support input lineages with sequences
-    df = df[df['Pango lineage'].isin(lineages)]
-    # remove duplicate sequences
-    df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False) # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
-    # add fasta sequence header
-    df['seq_name'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
-
-    return df
-
-
-
 def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aaf):
     """
-    For every pangolin lineage, select exactly one sample.
+    For every pangolin lineage, select sample records such that every characteristic variant with >= 50%
+    frequency is captured at least once.
     """
     # check which lineages are present
-    lineages = metadata_df["Pango lineage"].unique()
+    lineages = metadata_df["lineage"].unique()
     logger.debug("# lineages = {}".format(len(lineages)))
     # assign vcfs and allele frequency files to lineages, assuming vcfs are in current directory and named after the corresponding lineage
     vcf_dict = {vcf.split('/')[-1].split('_')[0] : vcf for vcf in vcf_list}
@@ -102,9 +69,9 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
     # select samples for every lineage
     selection_ids = []
     for lin_id in lineages:
-        samples = metadata_df.loc[metadata_df["Pango lineage"] == lin_id]
+        samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
-        samples = samples.sort_values(by=["nonN_count", "date"], ascending=False)
+        samples = samples.sort_values(by=["nonN", "date"], ascending=False)
         # read allele frequencies and extract sites with AAF >= minimal alt allele frequency
         try:
             allele_freq_file = freq_dict[lin_id]
@@ -182,20 +149,23 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
 
     logger.debug("{} sequences selected in total".format(len(selection_ids)))
     selection_df = metadata_df.loc[
-                        metadata_df["Accession ID"].isin(selection_ids)]
+                        metadata_df["record_id"].isin(selection_ids)]
 
     return selection_df
 
 
-
+# Idea:
+# store selected sequences in a desh and gisaid fasta respectively (kallisto should take multiple input fastas)
+# Let's wait until transforming pipeline into nextflow workflow
 def filter_fasta(fasta_in, fasta_out, selection_df):
     """
     Filter fasta according to selected metadata
     """
     keep_line = False
-    selection_identifiers = selection_df["seq_name"].unique()
-    with open(fasta_in, 'r') as f_in:
-        with open(fasta_out, 'w') as f_out:
+    selection_identifiers = selection_df["fasta_id"].unique()
+    f_out = open(fasta_out, 'w')
+    for fasta in fasta_in:
+        with open(fasta, 'r') as f_in:
             for line in f_in:
                 if line[0] == '>':
                     # sequence identifier
@@ -208,6 +178,7 @@ def filter_fasta(fasta_in, fasta_out, selection_df):
                 elif keep_line:
                     # nucleotide sequence
                     f_out.write(line)
+    f_out.close()
 
     return
 

@@ -17,7 +17,7 @@ import vcf
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Build reference set consisting of a selection of samples per pangolin lineage.")
-    parser.add_argument('-f, --fasta', dest='fasta_in', nargs='*', type=str, help="fasta files representing full gisaid and desh sequence databases")
+    parser.add_argument('-f, --fasta', dest='fasta_in', nargs='+', type=str, help="fasta files representing full gisaid and desh sequence databases")
     parser.add_argument('--vcf', required=True, type=str, nargs='+', help="vcf files per lineage")
     parser.add_argument('--freq', required=True, type=str, nargs='+', help="allele frequency files per lineage")
     parser.add_argument('--min_aaf', default=0.5, type=float, help="minimal alternative allele frequency (AAF) to consider variation")
@@ -171,6 +171,11 @@ def filter_fasta(fasta_in, fasta_out, selection_df):
                     # sequence identifier
                     seq_id = line.rstrip('\n').lstrip('>')
                     if seq_id in selection_identifiers:
+                        # kallisto doesn't accept spaces in fasta headers
+                        if '/' in seq_id:
+                            header = line.split('/')
+                            header[1] = header[1].replace(' ','_')
+                            line = '/'.join(header)
                         f_out.write(line)
                         keep_line = True
                     else:

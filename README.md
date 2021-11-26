@@ -11,7 +11,7 @@ Estiamte sc2 lineage abundances from wastewater samples
 
 # Usage
 *Test data:*
-- Download sample reads from [Agrawal et al.](https://journals.asm.org/doi/full/10.1128/MRA.00280-21) from [SRA](https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=search_seq_name)
+- Download sample reads from communities around Frankfurt by [Agrawal et al.](https://journals.asm.org/doi/full/10.1128/MRA.00280-21) from [SRA](https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=search_seq_name)
 
 *Note:*
 - Adjust path to installed paftools.js in [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
@@ -20,6 +20,33 @@ Estiamte sc2 lineage abundances from wastewater samples
 ```
 ./script.sh GISAID_METADATA.TSV GISAID_SEQUENCES.FASTA DESH_METADATA.CSV DESH_LINEAGES.CSV DESH_SEQUENCES.FASTA DESH_EPI_ISL.CSV WILDTYPE.FASTA PATH_TO_QUERY_FASTQ_FILES OUTDIR
 ```
+
+# Analysis Steps
+1. Reference set building
+- Cleanse input data sets
+  - GISAID:
+    - select human samples only
+    - if DESH data provided, filter out overlapping samples between the two data sets
+    - drop samples with no 'N' count or lineage information available
+    - drop duplicates by virus name, submission date and collection date (need to construct fasta header to access sequences and there would exist duplicates otherwise)
+    - create fasta headers from 'Virus name', 'Collection date' and 'Submission date'
+    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'Accession ID' ('record_id')
+    - filter by country
+  - DESH:
+    - get non 'N' count from sequence data
+    - filter out samples with no lineage information available
+    - drop duplicates by 'IMS_ID'
+    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'IMS_ID' ('record_id')
+- Filter records by sample collection date
+- Remove sequences with less than X non-ambiguous calls
+- Sample k sequences to represent each lineage
+
+2. Call variants
+3. Select final reference set from variant data
+- Filter samples per lineage such that each variant with freq >50% is represented at least once
+3. Apply kallisto to prepared reference set and input fastq reads
+4. Summarize predicted lineage abundances
+
 
 ## Obsolete
 * [Frankfurt_lineages](https://github.com/EvaFriederike/sc2_sewage/tree/main/Frankfurt_lineages) contains the lineage and lineage abundance predictions for wastewater reads from Sindlingen und Griesheim using the pipeline from baymlab and GISAID sequences (download 2020-10-01) from Germany.

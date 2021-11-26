@@ -16,29 +16,23 @@ import datetime as dt
 
 ################################################
 # FUNCTIONS
-# TODO: Make database usage more adaptive (allow user to choose a single source or both dbs)
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Preprocess reference collection: randomly select samples and write into individual files in lineage-specific directories.")
     parser.add_argument('-gisaid, --gisaid', dest='gisaid', nargs='*', type=str, help="Specify paths to gisaid metadata tsv file and sequence fasta file")
     parser.add_argument('-desh, --desh', dest='desh', nargs='*', type=str, help="Specify paths to desh sample and lineage metadata csv files and desh sequence fasta file")
     parser.add_argument('-epi, --desh_epi', dest='desh_epi', type=str, help="Specify path to csv file containing EPI ISL ids for the desh data set")
-    parser.add_argument('--country', dest='country', type=str, nargs='*', help="only consider sequences found in specified country")
+    parser.add_argument('--country', dest='country', type=str, help="only consider sequences found in specified list of comme-separated countries")
     parser.add_argument('--startdate', dest='startdate', type=str, help="only consider sequences found on or after this date; input should be ISO format")
     parser.add_argument('--enddate', dest='enddate', type=str, help="only consider sequences found on or before this date; input should be ISO format")
-    #parser.add_argument('--state', dest='state', type=str, help="only consider sequences found in specified state")
     parser.add_argument('--min_len', dest='min_len', type=int, default=29500, help="Don't select sequences with less than the specified minimal number of non-ambiguous nucleotides.")
-    parser.add_argument('-k', dest='select_k', type=int, default=1000, help="randomly select 1000 sequences per lineage")
+    parser.add_argument('-k', dest='select_k', type=int, default=1000, help="Specify how many samples to randomly select per lineage")
     parser.add_argument('--seed', dest='seed', default=0, type=int, help="random seed for sequence selection")
     parser.add_argument('-o, --outdir', dest='outdir', type=str, default="seqs_per_lineage", help="output directory")
     parser.add_argument('--log', dest='log', type=str, help="path to log file")
     args = parser.parse_args()
 
-    sample_metadata = args.desh[0]
-    lineage_metadata = args.desh[1]
-    desh_fasta = args.desh[2]
-    gisaid_metadata = args.gisaid[0]
-    gisaid_fasta = args.gisaid[1]
+    country_filter = [c.strip() for c in args.country.split(',')]
 
     global logger
     logger = logging.getLogger()
@@ -56,18 +50,41 @@ def main():
 
     # read metadata
     logger.debug('read metadata')
-    gisaid_df = read_filter_gisaid(gisaid_metadata, args.desh_epi, args.country)
-    desh_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
-    metadata_df = pd.concat([gisaid_df, desh_df], axis=0)
+    if args.gisaid !=None and args.desh != None:
+        gisaid_metadata = args.gisaid[0]
+        gisaid_fasta = args.gisaid[1]
+        gisaid_df = read_filter_gisaid(gisaid_metadata, args.desh_epi)
+        sample_metadata = args.desh[0]
+        lineage_metadata = args.desh[1]
+        desh_fasta = args.desh[2]
+        desh_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
+        metadata_df = pd.concat([gisaid_df, desh_df], axis=0)
+    else:
+        if args.gisaid!=None:
+            gisaid_metadata = args.gisaid[0]
+            gisaid_fasta = args.gisaid[1]
+            metadata_df = read_filter_gisaid(metadata_file = gisaid_metadata, epi_isl_file=None)
+        if args.desh!=None:
+            sample_metadata = args.desh[0]
+            lineage_metadata = args.desh[1]
+            desh_fasta = args.desh[2]
+            metadata_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
     lineages = metadata_df["lineage"].unique()
 
     # filter data set by location, date of sample collection, maximum allowed count of unknown bases
+    if args.country:
+        logger.debug(f'filter by countries: {country_filter}')
+        metadata_df = metadata_df.loc[metadata_df["country"].isin(country_filter)]
     if args.startdate:
+        logger.debug(f'filter by earliest sampling date: {args.startdate}')
         metadata_df = metadata_df.loc[metadata_df["date"] >= pd.to_datetime(args.startdate)]
     if args.enddate:
+        logger.debug(f'filter by latest sampling date: {args.enddate}')
         metadata_df = metadata_df.loc[metadata_df["date"] <= pd.to_datetime(args.enddate)]
     if args.min_len:
+        logger.debug(f"filter by minimum non 'N' count: {args.min_len}")
         metadata_df = metadata_df.loc[metadata_df['nonN'] >= args.min_len]
+    logger.debug(f"Randomly select {args.select_k} samples per lineage")
 
     # select sequences for each lineage from filtered metadata
     logger.debug("select sequences")
@@ -106,8 +123,11 @@ def main():
     logger.debug("searching fasta and writing sequences to output directory...")
     logger.debug("... GISAID data ...")
     n_gisaid = get_sequences(gisaid_fasta, selection_dict, args.outdir)
-    logger.debug("... DESH data ...")
-    n_desh = get_sequences(desh_fasta, selection_dict, args.outdir)
+    if args.desh != None:
+        logger.debug("... DESH data ...")
+        n_desh = get_sequences(desh_fasta, selection_dict, args.outdir)
+    else:
+        n_desh = 0
     logger.debug("Total number of selected sequences: {} ".format(n_gisaid+n_desh))
 
     # write lineages
@@ -122,15 +142,18 @@ def main():
 
 
 
-def read_filter_gisaid(metadata_file, epi_isl_file, country_filter):
+def read_filter_gisaid(metadata_file, epi_isl_file):
     """
     Read gisaid metadata from tsv into dataframe, preprocess data
     """
     df = pd.read_csv(metadata_file, sep='\t', header=0, dtype=str)
-    gisaid_ids = pd.read_csv(epi_isl_file, header=None, names=['EPI_ISL'])
 
-    # Remove sample records that are included in desh data set
-    df = df.loc[~df['Accession ID'].isin(gisaid_ids['EPI_ISL'])]
+    # consider only human samples
+    df = df.loc[df.Host == "Human"]
+    if epi_isl_file != None:
+        gisaid_ids = pd.read_csv(epi_isl_file, header=None, names=['EPI_ISL'])
+        # Remove sample records that are included in desh data set
+        df = df.loc[~df['Accession ID'].isin(gisaid_ids['EPI_ISL'])]
 
     # ensure correct data types for calculating number of non-ambiguous bases
     df['Sequence length'] = df['Sequence length'].astype(float)
@@ -155,9 +178,10 @@ def read_filter_gisaid(metadata_file, epi_isl_file, country_filter):
     df.rename(columns={'Accession ID':'record_id'}, inplace=True)
 
     # filter by country
-    df = df.loc[df["Location"].apply(lambda x: x.split('/')[1].strip()).isin(country_filter)]
+    #df = df.loc[df["Location"].apply(lambda x: x.split('/')[1].strip()).isin(country_filter)]
+    df['country'] = df["Location"].apply(lambda x: x.split('/')[1].strip())
 
-    return df[['record_id', 'fasta_id','nonN','lineage','date']]
+    return df[['record_id', 'fasta_id','nonN','lineage','date','country']]
 
 
 
@@ -185,14 +209,15 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     desh_df['date'] = pd.to_datetime(desh_df['DATE_DRAW'], yearfirst=True)
 
     # remove duplicate sequences
-    # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
     desh_df.drop_duplicates(subset=['IMS_ID'], inplace=True, keep=False, ignore_index=True)
 
     # rename IMS_ID, add fasta_id column
     desh_df['fasta_id'] = desh_df['IMS_ID']
     desh_df.rename(columns={'IMS_ID':'record_id'}, inplace=True)
 
-    return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date']]
+    desh_df['country'] = ['Germany']*desh_df.shape[0]
+
+    return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date','country']]
 
 
 # Idea :

@@ -58,7 +58,12 @@ def main():
             if abundance_format == "":
                 logger.debug("ERROR: abundance file format not recognized as kallisto or salmon")
                 sys.exit(1)
+            # previuosly replaced bblank spaces in country name since kallisto doesn't accept spaces in fasta headers
             seqname = line[0]
+            if '/' in seqname:
+                header = seqname.split('/')
+                header[1] = header[1].replace('_',' ')
+                seqname = '/'.join(header)
             if args.metadata:
                 variant = df.loc[df["fasta_id"] == seqname]["lineage"]
                 variant = variant.iloc[0]

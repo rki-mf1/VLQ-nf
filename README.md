@@ -7,15 +7,16 @@ Estiamte sc2 lineage abundances from wastewater samples
 * [Mapping file](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/DESH/Abfrage-GISAID.pdf?__blob=publicationFile) for DESH and GISAID ids (csv containing the EPI\_ISL ids of the DESH submissions in GISAID)
 * [SC2 reference sequence](https://www.ncbi.nlm.nih.gov/sars-cov-2/) (fasta)
 * Wastewater reads (fastq)
-* minimap2 and k8 for using paftools.js for alignment and variant calling: [minimap2, k8, paftools.js](https://github.com/lh3/minimap2) need to be installed and added to PATH: add minimap2, k8 temporarily to $PATH via ```export PATH="$PATH:`pwd`:`pwd`/misc" ```
-  * **Note:** Despite $PATH update, I had to specify the complete file path to paftools.js additionally in line 8 of [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
+* minimap2 and k8 for using paftools.js for alignment and variant calling: [minimap2, k8, paftools.js](https://github.com/lh3/minimap2) need to be installed and added to PATH: add minimap2, k8 temporarily to $PATH via 
+```export PATH="$PATH:`pwd`:`pwd`/misc" ```
+ **Note:** Despite $PATH update, I had to specify the complete file path to paftools.js additionally in line 8 of [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
 
 # Usage
-*Test data:*
+**Test data:**
 - Download sample reads from communities around Frankfurt by [Agrawal et al.](https://journals.asm.org/doi/full/10.1128/MRA.00280-21) from [SRA](https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=search_seq_name) (see section _Data Availability_)
 - Required data structure: all fastq files lie in the same folder ``PATH_TO_QUERY_FASTQ_FILES``
 
-*Note:*
+**Note:**
 - Use full path for ``WILDTYPE.FASTA``
 - For input paths to directories (e.g. ``OUTDIR``) loose the last slash (e.g. _example/path/to/outdir_)
 - Even if one would like to only use GISAID data to build the reference, with the current implementation still an input for all parameter positions of _script.sh_ are needed (annoying, will change soon)
@@ -34,13 +35,13 @@ Estiamte sc2 lineage abundances from wastewater samples
     - drop samples with no 'N' count or lineage information available
     - drop duplicates by virus name, submission date and collection date (need to construct fasta header to access sequences and there would exist duplicates otherwise)
     - create fasta headers from 'Virus name', 'Collection date' and 'Submission date'
-    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'Accession ID' ('record_id')
+    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'Accession ID' ('record\_id')
     - filter by country
   - DESH:
     - get non 'N' count from sequence data
     - filter out samples with no lineage information available
-    - drop duplicates by 'IMS_ID'
-    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'IMS_ID' ('record_id')
+    - drop duplicates by 'IMS\_ID'
+    - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'IMS\_ID' ('record\_id')
 - Filter records by sample collection date
 - Remove sequences with less than X non-ambiguous calls
 - Sample k sequences to represent each lineage
@@ -53,11 +54,11 @@ Estiamte sc2 lineage abundances from wastewater samples
 
 # Output
 All output is written to ``OUTDIR``:
-* sc2_sewage.log
+* sc2\_sewage.log
 * seqs\_per\_lineage contains information on all sequences and lineages that were selected in the first and second analysis steps:
   * a folder for each lineage that samples from the input data sources were selected for. Each lineage folder contains selected samples assigned with that lineage (fasta) and the individual variant call output files (paftools and vcf files)
   * for each lineage one file with merged variant call results across all selected samples plus frequency files for the called alternate alleles
-  * ``lineages.txt`` containing all covered lineages
+  * _lineages.txt_ containing all covered lineages
 * reference\_set stores the final selected kallisto reference after the third analysis step as well as the kallisto index
 * kallisto\_out stores the final output. Each analysed fastq query gets a subfolder containig the kallisto output (run info, h5 and _abundance.tsv_) and the derived lineage abundances (_predictions.tsv_)
 

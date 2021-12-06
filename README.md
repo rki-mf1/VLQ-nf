@@ -7,9 +7,13 @@ Estiamte sc2 lineage abundances from wastewater samples
 * [Mapping file](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/DESH/Abfrage-GISAID.pdf?__blob=publicationFile) for DESH and GISAID ids (csv containing the EPI\_ISL ids of the DESH submissions in GISAID)
 * [SC2 reference sequence](https://www.ncbi.nlm.nih.gov/sars-cov-2/) (fasta)
 * Wastewater reads (fastq)
-* minimap2 and k8 for using paftools.js for alignment and variant calling: [minimap2, k8, paftools.js](https://github.com/lh3/minimap2) need to be installed and added to PATH: add minimap2, k8 temporarily to $PATH via 
+* minimap2 and k8 for using paftools.js for alignment and variant calling: [minimap2, k8, paftools.js](https://github.com/lh3/minimap2) need to be installed and added to PATH: 
+ 
+add minimap2, k8 temporarily to $PATH via 
+
 ```export PATH="$PATH:`pwd`:`pwd`/misc" ```
- **Note:** Despite $PATH update, I had to specify the complete file path to paftools.js additionally in line 8 of [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
+
+**Note:** Despite $PATH update, I had to specify the complete file path to paftools.js additionally in line 8 of [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
 
 # Usage
 **Test data:**

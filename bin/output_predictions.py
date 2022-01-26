@@ -18,28 +18,17 @@ def main():
     parser.add_argument('abundances', type=str, help="abundance file")
     parser.add_argument('--metadata', type=str, help="metadata file")
     parser.add_argument('-m', dest='min_ab', type=float, default=0, help="minimal frequency (%) to output variant")
-    parser.add_argument('--voc', dest='voc', type=str, help="comma-separated list of strains of interest, output abundance for these only")
+    parser.add_argument('--voc', dest='voc', nargs='*', type=str, help="comma-separated list of strains of interest, output abundance for these only")
     parser.add_argument('-o', dest='outfile', type=str, help="write output to tsv file")
-    parser.add_argument('--log', dest='log', type=str, help="path to log file")
     args = parser.parse_args()
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    output_file_handler = logging.FileHandler(args.log, mode='a')
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(output_file_handler)
-    logger.addHandler(stdout_handler)
+    outfile = args.outfile
+    vocs = args.voc
 
     if args.metadata:
-        df = pd.read_csv(args.metadata, sep='\t', header=0, dtype=str)
-
-    if args.outfile:
-        outfile = args.outfile
-    else:
-        outfilepath = args.abundances.split('/')
-        outfilepath[-1] = "predictions.tsv"
-        outfile = "/".join(outfilepath)
-
+        df = pd.read_csv(args.metadata, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+        print(df.head(5))
+        print(df['fasta_id'].unique())
     abundance_dict = {}
     abundance_format = ""
     with open(args.abundances, 'r') as f:
@@ -56,10 +45,11 @@ def main():
                 abundance_format = "salmon"
                 continue
             if abundance_format == "":
-                logger.debug("ERROR: abundance file format not recognized as kallisto or salmon")
+                print("ERROR: abundance file format not recognized as kallisto or salmon")
                 sys.exit(1)
-            # previuosly replaced bblank spaces in country name since kallisto doesn't accept spaces in fasta headers
+            # previuosly replaced blank spaces in country name since kallisto doesn't accept spaces in fasta headers
             seqname = line[0]
+            print(seqname)
             if '/' in seqname:
                 header = seqname.split('/')
                 header[1] = header[1].replace('_',' ')
@@ -90,7 +80,7 @@ def main():
             tpm, ab = values
             corrected_ab = ab / total_ab
             if ab >= args.min_ab / 100:
-                if args.voc == None or variant in args.voc.split(','):
+                if len(vocs) == 0 or variant in vocs:
                     f.write("{}\t{:.0f}\t{:.2f}\t{:.2f}\n".format(
                             variant, tpm, ab * 100, corrected_ab * 100))
 

@@ -1,34 +1,33 @@
+
 # sc2_sewage
 Estiamte sc2 lineage abundances from wastewater samples
 
+
 # Requirements
-* [GISAID](https://www.epicov.org/epi3/frontend#2a39e0) data (fasta) and metadata (tsv)
-* [DESH](https://github.com/robert-koch-institut/SARS-CoV-2-Sequenzdaten_aus_Deutschland) metadata (csv), lineage data (csv) and sequence data (fasta)
+* [GISAID](https://www.epicov.org/epi3/frontend#2a39e0) sequence data (fasta) and metadata (tsv)
 * [Mapping file](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/DESH/Abfrage-GISAID.pdf?__blob=publicationFile) for DESH and GISAID ids (csv containing the EPI\_ISL ids of the DESH submissions in GISAID)
-* [SC2 reference sequence](https://www.ncbi.nlm.nih.gov/sars-cov-2/) (fasta)
 * Wastewater reads (fastq)
-* minimap2 and k8 for using paftools.js for alignment and variant calling: [minimap2, k8, paftools.js](https://github.com/lh3/minimap2) need to be installed and added to PATH: 
- 
-add minimap2, k8 temporarily to $PATH via 
 
-```export PATH="$PATH:`pwd`:`pwd`/misc" ```
-
-**Note:** Despite $PATH update, I had to specify the complete file path to paftools.js additionally in line 8 of [script.sh](https://github.com/EvaFriederike/sc2_sewage/tree/main/script.sh) ($PAFTOOLS variable)
 
 # Usage
 **Test data:**
-- Download sample reads from communities around Frankfurt by [Agrawal et al.](https://journals.asm.org/doi/full/10.1128/MRA.00280-21) from [SRA](https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=search_seq_name) (see section _Data Availability_)
-- Required data structure: all fastq files lie in the same folder ``PATH_TO_QUERY_FASTQ_FILES``
+- Download sample reads from communities around Frankfurt by [Agrawal et al.](https://journals.asm.org/doi/full/10.1128/MRA.00280-21) from [SRA](https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=search_seq_name) (see section _Data Availability_). Required data structure: all fastq files lie in the same folder ``PATH/TO/QUERY_FASTQ_FILES/``
+- ``nf_test/`` contains small test files to show that the workflow functionally works. Both metadata and sequence files contain the first 100 entries of a larger gisaid dataset. For application with larger files and valdiation the issue with insufficient RM/memory has to be fixed.
 
-**Note:**
-- Use full path for ``WILDTYPE.FASTA``
-- For input paths to directories (e.g. ``OUTDIR``) loose the last slash (e.g. _example/path/to/outdir_)
-- Even if one would like to only use GISAID data to build the reference, with the current implementation still an input for all parameter positions of _script.sh_ are needed (annoying, will change soon)
-- More granular parameter setting for building the kallisto reference db currently have to be adjusted in the script (e.g. if only GISAID data should be used, just loose the ``-gisaid`` parameter  for _preprocess\_references.py_)
+First, create a conda environment ensuring all required packages and versions. Activate and run workflow in the conda env:
+```
+conda create -n sc2-sewage -c bioconda -c anaconda bcftools=1.3.1 biopython=1.78 htslib=1.3.1 kallisto=0.46.0 minimap2=2.17 pandas=1.1.3 pyvcf=0.68
+conda activate sc2-sewage
+```
+```
+nextflow run main.nf --gisaid nf_test/ --query PATH/TO/QUERY_FASTQ_FILES/ --gisaid_desh_map PATH/TO/MAPPING_CSV
+```
 
+# Parameter Handling
 ```
-./script.sh GISAID_METADATA.TSV GISAID_SEQUENCES.FASTA DESH_METADATA.CSV DESH_LINEAGES.CSV DESH_SEQUENCES.FASTA DESH_EPI_ISL.CSV WILDTYPE.FASTA PATH_TO_QUERY_FASTQ_FILES OUTDIR
+nextflow run main.nf --help
 ```
+* **TODO**: give table
 
 # Analysis Steps
 1. Reference set building
@@ -56,21 +55,16 @@ add minimap2, k8 temporarily to $PATH via
 3. Apply kallisto to prepared reference set and input fastq reads
 4. Summarize predicted lineage abundances
 
+
 # Output
-All output is written to ``OUTDIR``:
-* sc2\_sewage.log
-* seqs\_per\_lineage contains information on all sequences and lineages that were selected in the first and second analysis steps:
-  * a folder for each lineage that samples from the input data sources were selected for. Each lineage folder contains selected samples assigned with that lineage (fasta) and the individual variant call output files (paftools and vcf files)
-  * for each lineage one file with merged variant call results across all selected samples plus frequency files for the called alternate alleles
-  * _lineages.txt_ containing all covered lineages
-* reference\_set stores the final selected kallisto reference after the third analysis step as well as the kallisto index
-* kallisto\_out stores the final output. Each analysed fastq query gets a subfolder containig the kallisto output (run info, h5 and _abundance.tsv_) and the derived lineage abundances (_predictions.tsv_)
+## Results
+All output is written to ``results/``:
+* ``results/NAME_OF_QUERIED_FASTQ/kallisto_out/`` stores the kallisto output (run info, h5 and _abundance.tsv_) and final output table with the relative  lineage abundances (_predictions.tsv_)
+* ``nextflow-autodownload-databases/build_reference/ ``stores variant call files as well as the final reference set (fasta and metadata csv)
 
-
-## Obsolete
-* [Frankfurt_lineages](https://github.com/EvaFriederike/sc2_sewage/tree/main/Frankfurt_lineages) contains the lineage and lineage abundance predictions for wastewater reads from Sindlingen und Griesheim using the pipeline from baymlab and GISAID sequences (download 2020-10-01) from Germany.
-* [SL](https://github.com/EvaFriederike/sc2_sewage/tree/main/SL_lineages) contains the lineage and lineage abundance predictions for Sindlingen using the pipeline from baymlab and GISAID sequences (download 2020-10-01) from Germany and Germany in December 2020, respectively.
-* tbd: lineage abundance predictions for Sindlingen using the pipeline with GISAID and DESH data from decemeber 2020 considering (1) german sequences only and (2) sequences from multiple countries
+## Meta
+* Process log files are currently written to ``nextflow-run-infos/``.
+* NF specific output (e.g. pipeline dag and execution timeline) are also stored in ``nextflow-run-infos/``.
 
 # References
 * [Variant abundance estimation for SARS-CoV-2 in 1 wastewater using RNA-Seq quantification](https://www.medrxiv.org/content/10.1101/2021.08.31.21262938v1.full.pdf)

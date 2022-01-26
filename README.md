@@ -20,7 +20,7 @@ conda create -n sc2-sewage -c bioconda -c anaconda bcftools=1.3.1 biopython=1.78
 conda activate sc2-sewage
 ```
 ```
-nextflow run main.nf --gisaid nf_test/ --query PATH/TO/QUERY_FASTQ_FILES/ --gisaid_desh_map PATH/TO/MAPPING_CSV
+nextflow run main.nf --gisaid nf_test/ --query PATH/TO/QUERY_FASTQ_FILES/ 
 ```
 
 # Parameter Handling

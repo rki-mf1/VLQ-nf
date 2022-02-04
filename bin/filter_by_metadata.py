@@ -16,7 +16,7 @@ import datetime as dt
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Preprocess reference collection: filter samples by temporal and geographical relevance, randomly select samples from remaining dataset.")
-    parser.add_argument('-gisaid, --gisaid', dest='gisaid', type=str, help="Specify paths to gisaid metadata tsv file and sequence fasta file")
+    parser.add_argument('-gisaid, --gisaid', dest='gisaid', nargs=1, type=str, help="Specify paths to gisaid metadata tsv file and sequence fasta file")
     parser.add_argument('-desh, --desh', dest='desh', type=str, help="Specify paths to desh sample and lineage metadata csv files and desh sequence fasta file")
     parser.add_argument('--country', dest='country', nargs='*', type=str, help="only consider sequences found in specified list of comme-separated countries")
     parser.add_argument('--startdate', dest='startdate', nargs='*', type=str, help="only consider sequences found on or after this date; input should be ISO format")
@@ -26,39 +26,35 @@ def main():
     parser.add_argument('--seed', dest='seed', default=0, type=int, help="random seed for sequence selection")
     args = parser.parse_args()
 
-    country_filter = args.country
-    startdate = args.startdate
-    enddate = args.enddate
-
-    print('read metadata')
-    if args.gisaid != None:
-        metadata_df = pd.read_csv(args.gisaid, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
-    elif args.desh != None:
-        metadata_df = pd.read_csv(args.desh, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+    print('read data')
+    gisaid_df = pd.read_csv(args.gisaid[0], sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+    if args.desh == None:
+        metadata_df = gisaid_df
     else:
-        gisaid_df = pd.read_csv(args.gisaid, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
         desh_df = pd.read_csv(args.desh, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
         metadata_df = pd.concat([gisaid_df, desh_df], axis=0)
     lineages = metadata_df["lineage"].unique()
+    metadata_df['date'] = pd.to_datetime(metadata_df['date'])
 
     print('filter data set by location, date of sample collection, maximum allowed count of unknown bases')
     print(f'Before filtering the input data comprises {metadata_df.shape[0]} samples and {lineages.shape[0]} lineages')
-    if len(country_filter) != 0:
+    if len(args.country) != 0:
+        country_filter = args.country[0].split(',')
         print(f'filter by countries: {country_filter}')
         metadata_df = metadata_df.loc[metadata_df["country"].isin(country_filter)]
-    if len(startdate) != 0:
-        startdate = startdate[0]
+    if len(args.startdate) != 0:
+        startdate = args.startdate[0]
         print(f'filter by earliest sampling date: {startdate}')
-        metadata_df = metadata_df.loc[metadata_df["date"] >= pd.to_datetime(args.startdate)]
-    if len(enddate) != 0:
-        enddate = enddate[0]
+        metadata_df = metadata_df.loc[metadata_df["date"] >= pd.to_datetime(startdate)]
+    if len(args.enddate) != 0:
+        enddate = args.enddate[0]
         print(f'filter by latest sampling date: {enddate}')
-        metadata_df = metadata_df.loc[metadata_df["date"] <= pd.to_datetime(args.enddate)]
+        metadata_df = metadata_df.loc[metadata_df["date"] <= pd.to_datetime(enddate)]
     if args.min_len:
         print(f"filter by minimum non 'N' count: {args.min_len}")
         metadata_df = metadata_df.loc[metadata_df['nonN'] >= args.min_len]
+    print(f"Remaining samples: {metadata_df.shape[0]}")
 
-############################### TODO
     print(f"Randomly select {args.select_k} samples per lineage")
     # select sequences for each lineage from filtered metadata
     selection_df = pd.DataFrame(columns=metadata_df.columns)
@@ -74,15 +70,13 @@ def main():
             selection_df = pd.concat([selection_df, selection], axis=0)
             lineages_with_sequence.append(lin_id)
     print("Sequences selected for {} lineages".format(len(lineages_with_sequence)))
-
     # TODO: do we want to log how many samples were selected from GISAID and DESH, respectively?
-
     print("Total number of selected sequences: {} ".format(selection_df.shape[0]))
 
     # write lineages
-    with open("lineages.csv", 'w') as f:
-        for lin_id in sorted(lineages_with_sequence):
-            f.write("{}\n".format(lin_id))
+    #with open("lineages.csv", 'w') as f:
+    #    for lin_id in sorted(lineages_with_sequence):
+    #        f.write("{}\n".format(lin_id))
 
     # store filtered metadata
     selection_df.to_csv('selection_by_metadata.csv', sep="\t", index=False)

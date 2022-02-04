@@ -11,16 +11,17 @@ process process_desh {
 
   script:
   """
+  #!/bin/bash
+  echo "-------------------\nProcess DESH data\n--------------------"
+
   cp ${meta} cp_${meta}
   cp ${lineage} cp_${lineage}
-  cp ${fasta} cp_${fasta}
   unxz -d cp_${meta}
   unxz -d cp_${lineage}
-  gzip -d cp_${fasta}
 
-  process_desh.py -meta cp_${meta.baseName} -lineage cp_${lineage.baseName} -fasta cp_${fasta.baseName}
+  process_desh.py -meta cp_${meta.baseName} -lineage cp_${lineage.baseName} -fasta $fasta
 
-  rm cp_${fasta.baseName} cp_${lineage.baseName} cp_${meta.baseName} 
+  rm cp_${lineage.baseName} cp_${meta.baseName}
   """
 
 }

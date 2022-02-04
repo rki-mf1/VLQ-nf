@@ -12,17 +12,16 @@ process filter_by_metadata {
   script:
   if ("${desh_df.simpleName}" == 'DUMMY')
     """
-    filter_references.py -gisaid $gisaid_df --country $params.country --startdate $params.startdate --enddate ${params.enddate} --min_len $params.min_len -k $params.k --seed $params.seed
-    """
-
-  else if ("${gisaid_df.simpleName}" == 'DUMMY')
-    """
-    filter_references.py -desh $desh_df --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
+    #!/bin/bash
+    echo "--------------------\nFilter samples by metadata\n--------------------"
+    filter_by_metadata.py -gisaid $gisaid_df --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
     """
 
   else
     """
-    filter_references.py -gisaid ${gisaid_df} -desh ${desh_df} --country ${params.country} --startdate ${params.startdate} --enddate ${params.enddate} --min_len ${params.min_len} -k ${params.k} --seed {$params.seed}
+    #!/bin/bash
+
+    filter_by_metadata.py -gisaid $gisaid_df -desh $desh_df --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
     """
 
 }

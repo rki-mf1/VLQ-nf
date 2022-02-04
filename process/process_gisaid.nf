@@ -13,8 +13,10 @@ process process_gisaid {
   script:
   if ("${map_tsv.simpleName}" != "DUMMY")
     """
-    cp ${meta} cp_${meta}
-    tar --exclude='readme.txt' -xf cp_${meta}
+    #!/bin/bash
+    echo "-------------------\nProcess GISAID data\n--------------------"
+
+    tar --exclude='readme.txt' -xhf ${meta}
 
     process_gisaid.py -meta metadata.tsv -epi ${map_tsv}
 
@@ -23,12 +25,14 @@ process process_gisaid {
 
   else
     """
-    cp ${meta} cp_${meta}
-    tar --exclude='readme.txt' -xf cp_${meta}
+    #!/bin/bash
+    echo "-------------------\nProcess GISAID data\n--------------------"
+
+    tar --exclude='readme.txt' -xhf ${meta}
 
     process_gisaid.py -meta metadata.tsv
 
-    rm metadata.tsv cp_${meta}
+    rm metadata.tsv
     """
 
 }

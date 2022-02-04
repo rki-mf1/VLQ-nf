@@ -1,19 +1,19 @@
 process variant_call {
   maxForks 4
-  publishDir "${params.runinfo}/variant_call/", mode: 'copy', pattern: "*.paftools.log"
-  publishDir "${params.databases}/build_reference/vcf/${lineage}/", mode: 'copy', pattern: "${record_id}.vcf.gz*"
+  publishDir "${params.runinfo}/variant_call/", mode: 'copy', pattern: "${chunk_id}_paftools.log"
+  publishDir "${params.databases}/build_reference/vcf", mode: 'copy', pattern: "*_${chunk_id}_merged.vcf.gz"
 
   input:
-  tuple val(fasta_id), val(record_id), val(lineage), val(seq)
-  path wildtype
+  tuple val(chunk_id), path(multifasta), path(wildtype), path(selection_df)
 
   output:
-  tuple val(lineage), path("${record_id}.vcf.gz*"), emit: lineage
-  path "*.paftools.log"
+  path "${chunk_id}_lineages.txt", emit: chunk_lineages
+  path "*_${chunk_id}_merged.vcf.gz"
+  path "${chunk_id}_paftools.log"
 
   script:
   """
-  #!/bin/bash
+  #!/bin/env bash
   #SBATCH -c 20
   #SBATCH -t 0-2:00
   #SBATCH -p short
@@ -23,17 +23,46 @@ process variant_call {
   ##############################################
   # Source: https://github.com/baymlab/wastewater_analysis
   #############################################
-
-  echo ">${fasta_id}" > ${record_id}.fasta
-  echo $seq >> ${record_id}.fasta
+  echo --------------------Call variants for fasta chunk ${chunk_id}--------------------
 
   PAF=\$(which paftools.js)
+  mkdir -p fasta/
 
-  echo \${PAF}
-  minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs $wildtype ${record_id}.fasta 2>${record_id}.paftools.log | sort -k6,6 -k8,8n > ${record_id}.paf && \${PAF} call -s ${record_id} -L 100 -f $wildtype ${record_id}.paf > ${record_id}.vcf 2>>${record_id}.paftools.log;
-  bgzip -f ${record_id}.vcf;
-  bcftools index -f ${record_id}.vcf.gz;
+  echo Split multifasta and collect lineage annotation
+  split_fasta_collect_lineage.py -meta $selection_df -multifasta $multifasta
+
+  for file in fasta/*.fasta; do
+    basename=\${file##*/}
+    fasta_id=\${basename%.fasta}
+    lineage=\${fasta_id%%_*}
+
+    minimap2 -c -x asm20 --end-bonus 100 -t 20 --cs $wildtype \$file 2>\${fasta_id}.paftools.log | sort -k6,6 -k8,8n > \${fasta_id}.paf && \${PAF} call -s \$fasta_id -L 100 -f $wildtype \${fasta_id}.paf > \${fasta_id}.vcf 2>>\${fasta_id}.paftools.log;
+    bgzip -f \${fasta_id}.vcf;
+    bcftools index -f \${fasta_id}.vcf.gz;
+    mv  \${fasta_id}.vcf*  \${fasta_id}.paf* fasta/\$lineage
+  done
+
+  touch ${chunk_id}_lineages.txt
+  for dir in fasta/*; do
+    if [ -d \${dir} ]; then
+      lineage=\${dir##*/}
+      echo merge vcf files for lineage \${lineage}
+      echo \$lineage >> ${chunk_id}_lineages.txt
+
+      sample_count=\$(ls \${dir}/*.vcf.gz | wc -l);
+      if [[ \$sample_count -eq 1 ]]; then
+        cp \${dir}/*.vcf.gz \${lineage}_${chunk_id}_merged.vcf.gz
+      else
+        bcftools merge -o \${lineage}_${chunk_id}_merged.vcf.gz -O z \$dir/*.vcf.gz
+      fi
+    fi
+  done
+
+  touch ${chunk_id}_paftools.log
+  cat .command.log >> ${chunk_id}_paftools.log
+  for file in fasta/*/*paftools.log; do
+    cat \$file >> ${chunk_id}_paftools.log
+  done
 
   """
-
 }

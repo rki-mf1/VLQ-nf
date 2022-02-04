@@ -21,14 +21,17 @@ def main():
     parser.add_argument('--voc', dest='voc', nargs='*', type=str, help="comma-separated list of strains of interest, output abundance for these only")
     parser.add_argument('-o', dest='outfile', type=str, help="write output to tsv file")
     args = parser.parse_args()
-
     outfile = args.outfile
-    vocs = args.voc
 
+    if len(args.voc) != 0:
+        vocs = args.voc[0].split(',')
+    else:
+        vocs = args.voc
+
+    print("read data")
     if args.metadata:
         df = pd.read_csv(args.metadata, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
-        print(df.head(5))
-        print(df['fasta_id'].unique())
+
     abundance_dict = {}
     abundance_format = ""
     with open(args.abundances, 'r') as f:
@@ -49,7 +52,6 @@ def main():
                 sys.exit(1)
             # previuosly replaced blank spaces in country name since kallisto doesn't accept spaces in fasta headers
             seqname = line[0]
-            print(seqname)
             if '/' in seqname:
                 header = seqname.split('/')
                 header[1] = header[1].replace('_',' ')

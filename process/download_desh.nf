@@ -10,8 +10,11 @@ process download_desh {
 
   script:
   """
+  #!/bin/bash
+
+  echo "--------------------\nDownload DESH data\n--------------------"
+
   git clone https://github.com/robert-koch-institut/SARS-CoV-2-Sequenzdaten_aus_Deutschland.git
-  # rm
   """
 
 }

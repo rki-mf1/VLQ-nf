@@ -31,14 +31,14 @@ exec &> >(tee "$LOG_FILE")
 
 echo "Step 1: Build a reference set"
 echo ">>> pre-select based on nonN counts and country"
-python ${SCRIPTPATH}/pipeline_baymlab/preprocess_references.py -gisaid ${G_META} ${G_FASTA} --country "Germany,Denmark,Belgium,Netherlands,England,France,Austria,Switzerland,Poland" --startdate 2021-03-10 --enddate 2021-03-30 -o ${OUTDIR}/seqs_per_lineage --log ${LOG_FILE}
+python ${SCRIPTPATH}/pipeline_baymlab/preprocess_references.py -gisaid ${G_META} ${G_FASTA} --country "Germany,England" --startdate 2021-02-01 --enddate 2021-04-30 -o ${OUTDIR}/seqs_per_lineage --log ${LOG_FILE}
 
 echo ">>> call variants: find log info in ${OUTDIR}/seqs_per_lineage/<FASTA>.paftools.log"
 ${SCRIPTPATH}/pipeline_baymlab/call_variants.sh ${OUTDIR}/seqs_per_lineage ${REFERENCE} ${PAFTOOLS}
 
 echo ">>> select sequences per lineage such that each typical mutation with at least 50% frequency is captured at least once"
 mkdir -p ${OUTDIR}/reference_set
-python ${SCRIPTPATH}/pipeline_baymlab/select_samples.py -f ${G_FASTA} ${D_FASTA} --vcf ${OUTDIR}/seqs_per_lineage/*_merged.vcf.gz --freq ${OUTDIR}/seqs_per_lineage/*_merged.frq -o ${OUTDIR} --log ${LOG_FILE}
+python ${SCRIPTPATH}/pipeline_baymlab/select_samples.py -f ${G_FASTA} --vcf ${OUTDIR}/seqs_per_lineage/*_merged.vcf.gz --freq ${OUTDIR}/seqs_per_lineage/*_merged.frq -o ${OUTDIR} --log ${LOG_FILE}
 
 
 

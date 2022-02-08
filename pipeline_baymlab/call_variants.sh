@@ -16,9 +16,9 @@ cd ${ref_dir}
 
 # for every lineage go to dir with sampeld fasta files
 while read lineage; do \
-    cd $lineage;
+    #cd $lineage
     # for every fasta file
-    for fasta in *.fa; do \
+    for fasta in ${lineage}/*.fa; do \
         # align and sort, zip and index resulting vcf
         # install minimap2, k8 and paftools.js all via https://github.com/lh3/minimap2/tree/master/misc (see readme)
         # TODO: add minimap2, k8 temporarily to $PATH via export PATH="$PATH:`pwd`:`pwd`/misc"
@@ -26,7 +26,7 @@ while read lineage; do \
         bgzip -f ${fasta%.fa}.vcf;
         bcftools index -f ${fasta%.fa}.vcf.gz;
     done;
-    cd ..;
+    #cd ..;
     sample_count=$(ls ${lineage}/*.vcf.gz | wc -l);
     if [[ ${sample_count} -eq 1 ]]; then \
         cp ${lineage}/*.vcf.gz ${lineage}_merged.vcf.gz;

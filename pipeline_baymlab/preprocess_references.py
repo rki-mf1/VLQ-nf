@@ -59,6 +59,7 @@ def main():
         desh_fasta = args.desh[2]
         desh_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
         metadata_df = pd.concat([gisaid_df, desh_df], axis=0)
+        logger.debug(f"Start with {gisaid_metadata.shape[0]} samples and {len(gisaid_metadata.lineage.unique())} lineages")
     else:
         if args.gisaid!=None:
             gisaid_metadata = args.gisaid[0]
@@ -69,8 +70,9 @@ def main():
             lineage_metadata = args.desh[1]
             desh_fasta = args.desh[2]
             metadata_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
-    lineages = metadata_df["lineage"].unique()
 
+    lineages = metadata_df["lineage"].unique()
+    logger.debug(f"After processing, continue with {metadata_df.shape[0]} samples and {len(lineages)} lineages")
     # filter data set by location, date of sample collection, maximum allowed count of unknown bases
     if args.country:
         logger.debug(f'filter by countries: {country_filter}')
@@ -84,26 +86,16 @@ def main():
     if args.min_len:
         logger.debug(f"filter by minimum non 'N' count: {args.min_len}")
         metadata_df = metadata_df.loc[metadata_df['nonN'] >= args.min_len]
-    logger.debug(f"Randomly select {args.select_k} samples per lineage")
 
+    logger.debug(f"Randomly select {args.select_k} samples per lineage")
     # select sequences for each lineage from filtered metadata
-    logger.debug("select sequences")
     selection_dict = {}
-    lineages_with_sequence = []
     for lin_id in lineages:
         samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
         select_n = min(len(samples), args.select_k)
         if select_n == 0:
             continue
         else:
-            # create lineage directory
-            try:
-                os.mkdir("{}/{}".format(args.outdir, lin_id))
-            except FileExistsError:
-                # empty existing directory
-                old_files = glob.glob("{}/{}/*".format(args.outdir, lin_id))
-                for f_trash in old_files:
-                    os.remove(f_trash)
             # randomly select sequences
             selection = samples.sample(n=select_n, random_state=args.seed)
             if select_n == 1:
@@ -116,26 +108,24 @@ def main():
                 for i, seq_name in enumerate(seq_names):
                     seq_id =  seq_ids[i]
                     selection_dict[seq_name] = (lin_id, seq_id)
-            lineages_with_sequence.append(lin_id)
-    logger.debug("Sequences selected for {} lineages".format(len(lineages_with_sequence)))
-
     # write sequences to separate files (structured by lineage)
     logger.debug("searching fasta and writing sequences to output directory...")
     logger.debug("... GISAID data ...")
-    n_gisaid = get_sequences(gisaid_fasta, selection_dict, args.outdir)
+    n_gisaid, lineages_with_sequence, records = get_sequences(gisaid_fasta, selection_dict, args.outdir)
     if args.desh != None:
         logger.debug("... DESH data ...")
-        n_desh = get_sequences(desh_fasta, selection_dict, args.outdir)
+        n_desh, lineages_with_sequence, records = get_sequences(desh_fasta, selection_dict, args.outdir)
     else:
         n_desh = 0
     logger.debug("Total number of selected sequences: {} ".format(n_gisaid+n_desh))
-
+    logger.debug("Sequences selected for {} lineages".format(len(lineages_with_sequence)))
     # write lineages
     with open("{}/lineages.txt".format(args.outdir), 'w') as f:
         for lin_id in sorted(lineages_with_sequence):
             f.write("{}\n".format(lin_id))
 
     # store filtered metadata
+    metadata_df = metadata_df[metadata_df['record_id'].isin(records)]
     metadata_df.to_csv(args.outdir+'/metadata.tsv', sep="\t", index=False)
 
     return None
@@ -161,21 +151,27 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     df = df[df["N-Content"].notna()]
     df['N-Content'] = df['N-Content'].astype(float)
     df['nonN'] = (1-df['N-Content'])*df['Sequence length']
+    df['nonN'] = df['nonN'].astype(int)
 
     # remove samples wich have no pangolin lineage assigned (NaN or None)
     df = df[df["Pango lineage"].notna()]
     df = df[df["Pango lineage"] != "None"]
     df.rename(columns={'Pango lineage':'lineage'}, inplace=True)
 
+    logger.debug('remove samples wich have no location information (NaN or None)')
+    df = df[df["Location"].notna()]
+    df = df[df["Location"] != "None"]
+
     # adjust date representation in dataframe
     df["date"] = pd.to_datetime(df["Collection date"], yearfirst=True)
 
     # remove duplicate sequences
     # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
-    df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
+    #df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
     # add fasta sequence header
-    df['fasta_id'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
+    #df['fasta_id'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
     df.rename(columns={'Accession ID':'record_id'}, inplace=True)
+    df['fasta_id'] = df['record_id']
 
     # filter by country
     #df = df.loc[df["Location"].apply(lambda x: x.split('/')[1].strip()).isin(country_filter)]
@@ -197,8 +193,14 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     fasta = SeqIO.to_dict(SeqIO.parse(open(desh_fasta),'fasta'))
     nonN = []
     for seq_id in desh_df['IMS_ID']:
-        seq = fasta[seq_id].seq
-        nonN.append(len(seq)-seq.count('N'))
+        if seq_id in fasta:
+            seq = fasta[seq_id].seq
+            nonN.append(len(seq)-seq.count('N'))
+        else:
+            # Introduced this when working with data where sequence records were
+            # pre-filtered and thus contained less samples than the input metadata tables
+            logger.debug(f"ATTENTION: {seq_id} is not contained in {desh_fasta}")
+            nonN.append(0)
     desh_df['nonN'] = nonN
 
     # remove samples wich have no pangolin lineage assigned (NaN or None)
@@ -228,6 +230,8 @@ def get_sequences(fasta, selection_dict, outdir):
     Write selected sequences from fasta file to separate fasta files in outdir based on
     headers stored in selection_dict
     """
+    lineages_with_sequence = []
+    records = []
     with open(fasta, 'r') as f_in:
         keep_line = False
         line_idx = 0
@@ -241,9 +245,15 @@ def get_sequences(fasta, selection_dict, outdir):
                     logger.debug("{} sequences from selection found".format(selection_idx))
                 header = line.rstrip('\n').lstrip('>')
                 if header in selection_dict.keys():
+                    records.append(header)
                     lin_id, seq_id = selection_dict[header]
                     keep_line = True
                     selection_idx += 1
+                    directory = "{}/{}/".format(outdir, lin_id)
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+                    if not lin_id in lineages_with_sequence:
+                        lineages_with_sequence.append(lin_id)
                     outfile = "{}/{}/{}.fa".format(outdir, lin_id, seq_id)
                     f_out = open(outfile, 'w')
                     f_out.write(">{}\n".format(header))
@@ -257,7 +267,7 @@ def get_sequences(fasta, selection_dict, outdir):
         logger.debug("{} sequences from input fasta processed".format(line_idx))
         logger.debug("{} sequences from selection found".format(selection_idx))
 
-    return selection_idx
+    return selection_idx, lineages_with_sequence, records
 
 ############################################
 # MAIN

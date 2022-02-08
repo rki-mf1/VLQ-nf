@@ -43,9 +43,11 @@ def main():
     # Read meta
     # Select reference sequences per pango lineage and write to separate fasta files
     metadata_df = pd.read_csv(args.outdir+'/seqs_per_lineage/metadata.tsv', sep='\t')
+    logger.debug(f"Read in {metadata_df.shape[0]} samples from metadata-based filtering")
+
     selection_df = select_ref_genomes(metadata_df, args.max_per_lineage, args.vcf,
                                       args.freq, args.min_aaf)
-
+    logger.debug(f"Final reference library contains {selection_df.shape[0]} samples")
     # Filter collectino of input fasta sequences according to selection and write new fasta
     fasta_out = args.outdir + "/reference_set/sequences.fasta"
     filter_fasta(args.fasta_in, fasta_out, selection_df)
@@ -68,6 +70,7 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
     freq_dict = {fname.split('/')[-1].split('_')[0] : fname for fname in freq_list}
     # select samples for every lineage
     selection_ids = []
+    selection_lineages = []
     for lin_id in lineages:
         samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
@@ -97,7 +100,7 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
         # if for current lineage no variant position has > min_aaf, keep only one sample for lineage
         selection_count = 0
         if len(variant_positions) == 0:
-            selection_ids.append(samples[0])
+            selection_ids.append(samples[0].split('/')[-1])
             selection_count += 1
         else:
             # read vcf and process samples: keep sequences for current lineage such that
@@ -137,19 +140,19 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
                             select = True
                             variation_seen[pos].append(allele)
                 if select:
-                    selection_ids.append(sample)
+                    selection_ids.append(sample.split('/')[-1])
                     selection_count += 1
                     if selection_count == max_per_lineage:
                         break
+        selection_lineages.append(lin_id)
         logger.debug("{} sequences selected for lineage {}".format(selection_count,
                                                             lin_id))
         if selection_count == 0:
             logger.debug("ERROR: no sequences selected for lineage {}".format(lin_id))
             sys.exit(1)
 
-    logger.debug("{} sequences selected in total".format(len(selection_ids)))
-    selection_df = metadata_df.loc[
-                        metadata_df["record_id"].isin(selection_ids)]
+    logger.debug(f"{len(selection_ids)} sequences selected in total fo {len(selection_lineages)} lienages")
+    selection_df = metadata_df.loc[metadata_df["record_id"].isin(selection_ids)]
 
     return selection_df
 

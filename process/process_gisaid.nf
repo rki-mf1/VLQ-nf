@@ -1,5 +1,5 @@
 process process_gisaid {
-  publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "process_gisaid.log"}
+  //publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "process_gisaid.log"}
 
   input:
   path meta
@@ -7,14 +7,15 @@ process process_gisaid {
 
   output:
   path "processed_gisaid_metadata.tsv", emit: gisaid_processed
-  path ".command.log"
+  path ".command.log", emit:log
 
 
   script:
   if ("${map_tsv.simpleName}" != "DUMMY")
     """
     #!/bin/bash
-    echo "-------------------\nProcess GISAID data\n--------------------"
+    echo "_______________________________________________________________"
+    echo "--- Process GISAID data"
 
     tar --exclude='readme.txt' -xhf ${meta}
 
@@ -26,7 +27,8 @@ process process_gisaid {
   else
     """
     #!/bin/bash
-    echo "-------------------\nProcess GISAID data\n--------------------"
+    echo "_______________________________________________________________"
+    echo "--- Process GISAID data"
 
     tar --exclude='readme.txt' -xhf ${meta}
 

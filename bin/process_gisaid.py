@@ -20,10 +20,10 @@ def main():
     parser.add_argument('-epi_map, --epi_map', dest='epi_map', type=str, help="Specify path to csv file containing EPI ISL ids for the desh data set")
     args = parser.parse_args()
 
-    print('read metadata')
+    print('read data')
     gisaid_metadata = args.meta[0]
 
-    print('process gisaid data')
+    print('process gisaid metadata')
     gisaid_df = read_filter_gisaid(gisaid_metadata, args.epi_map)
     gisaid_df.to_csv('processed_gisaid_metadata.tsv', sep="\t", index=False)
 
@@ -36,6 +36,7 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     Read gisaid metadata from tsv into dataframe, preprocess data
     """
     df = pd.read_csv(metadata_file, sep='\t', header=0, dtype=str)
+    x = df.shape[0]
 
     print('consider only human samples')
     df = df.loc[df.Host == "Human"]
@@ -58,6 +59,11 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     df = df[df["Pango lineage"] != "None"]
     df.rename(columns={'Pango lineage':'lineage'}, inplace=True)
 
+    print('remove samples wich have no location information (NaN or None)')
+    df = df[df["Location"].notna()]
+    df = df[df["Location"] != "None"]
+    df['continent'] = df["Location"].apply(lambda x: x.split('/')[0].strip())
+
     print('adjust date representation in dataframe')
     df["date"] = pd.to_datetime(df["Collection date"], yearfirst=True)
 
@@ -73,7 +79,9 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     print('format country')
     df['country'] = df["Location"].apply(lambda x: x.split('/')[1].strip())
 
-    return df[['record_id', 'fasta_id','nonN','lineage','date','country']]
+    print(f'--- Remaining samples: {df.shape[0]}/{x}')
+
+    return df[['record_id', 'fasta_id','nonN','lineage','date','country', 'continent']]
 
 
 

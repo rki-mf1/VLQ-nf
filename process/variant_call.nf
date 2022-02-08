@@ -1,6 +1,6 @@
 process variant_call {
   maxForks 4
-  publishDir "${params.runinfo}/variant_call/", mode: 'copy', pattern: "${chunk_id}_paftools.log"
+  //publishDir "${params.runinfo}/variant_call/", mode: 'copy', pattern: "${chunk_id}_paftools.log"
   publishDir "${params.databases}/build_reference/vcf", mode: 'copy', pattern: "*_${chunk_id}_merged.vcf.gz"
 
   input:
@@ -9,7 +9,7 @@ process variant_call {
   output:
   path "${chunk_id}_lineages.txt", emit: chunk_lineages
   path "*_${chunk_id}_merged.vcf.gz"
-  path "${chunk_id}_paftools.log"
+  path "${chunk_id}_paftools.log", emit: log
 
   script:
   """
@@ -23,7 +23,7 @@ process variant_call {
   ##############################################
   # Source: https://github.com/baymlab/wastewater_analysis
   #############################################
-  echo --------------------Call variants for fasta chunk ${chunk_id}--------------------
+  echo "Call variants for fasta chunk ${chunk_id}"
 
   PAF=\$(which paftools.js)
   mkdir -p fasta/

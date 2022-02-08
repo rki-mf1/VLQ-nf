@@ -16,7 +16,7 @@ tbd
     - drop duplicates by virus name, submission date and collection date (need to construct fasta header to access sequences and there would exist duplicates otherwise)
     - create fasta headers from 'Virus name', 'Collection date' and 'Submission date'
     - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'Accession ID' ('record\_id')
-    - filter by country
+    - filter by country or continent
   - DESH:
     - get non 'N' count from sequence data
     - filter out samples with no lineage information available
@@ -86,7 +86,7 @@ nextflow run main.nf --help
 | --argument 	|  	|  	|  	|  
 |  *Kallisto*	|  	|  	|  	|  	
 | --argument 	|  	|  	|  	|  
-
+**Always use full file paths**
 ## Output
 ### Results
 All output is written to ``results/``:

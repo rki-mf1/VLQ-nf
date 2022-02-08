@@ -3,7 +3,7 @@
 * Idea: run process on condition that infile != *.fasta.gz, else give infile as output
 */
 process gzip_fasta {
-  publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {in_filename -> "gzip_fasta.log"}
+  //publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {in_filename -> "gzip_fasta.log"}
   storeDir "${params.databases}/INPUT/"
 
   input:

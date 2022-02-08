@@ -26,10 +26,13 @@ def main():
 
 
     print("read data")
+
+    print(glob(args.vcf[0]))
     vcf_list = [ glob(file)[0] for file in args.vcf]
     freq_list = [ glob(file)[0] for file in args.freq]
-    metadata_df = pd.read_csv(args.metadata[0], header=0, sep='\t',dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+    metadata_df = pd.read_csv(args.metadata[0], header=0, sep='\t',dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
 
+    print(f"select genomic sequences for every lineage such that every characteristic variant with frequency>={args.min_aaf} is captured at least once")
     selection_df = select_ref_genomes(metadata_df, args.max_per_lineage, vcf_list, freq_list, args.min_aaf)
     selection_df.to_csv('aaf_selection.csv', sep='\t', index=False)
 
@@ -124,13 +127,12 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
                     selection_count += 1
                     if selection_count == max_per_lineage:
                         break
-        print("{} sequences selected for lineage {}".format(selection_count,lin_id))
-        print(selection_ids)
+        print("--- {} sequences selected for lineage {}".format(selection_count,lin_id))
         if selection_count == 0:
             print("ERROR: no sequences selected for lineage {}".format(lin_id))
             sys.exit(1)
 
-    print("{} sequences selected in total".format(len(selection_ids)))
+    print("--- {} sequences selected in total".format(len(selection_ids)))
     selection_df = meta_df.loc[meta_df["record_id"].isin(selection_ids)]
 
     return selection_df

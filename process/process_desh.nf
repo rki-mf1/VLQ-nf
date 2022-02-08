@@ -1,5 +1,5 @@
 process process_desh {
-  publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "process_desh.log"}
+  //publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "process_desh.log"}
 
   input:
   tuple path(meta), path(lineage)
@@ -7,12 +7,13 @@ process process_desh {
 
   output:
   path "processed_desh_metadata.tsv", emit: desh_processed
-  path ".command.log"
+  path ".command.log", emit: log
 
   script:
   """
   #!/bin/bash
-  echo "-------------------\nProcess DESH data\n--------------------"
+  echo "_______________________________________________________________"
+  echo "--- Process DESH data"
 
   cp ${meta} cp_${meta}
   cp ${lineage} cp_${lineage}

@@ -43,6 +43,7 @@ if (!params.query) {
 /**************************
 * INPUT channels
 **************************/
+
 gisaid_meta_ch = channel.fromPath("${params.gisaid}/*metadata*", checkIfExists: true)
 gisaid_seq_ch = channel.fromPath("${params.gisaid}/*fasta*", checkIfExists: true)
 gisaid_meta_ch.view()
@@ -130,19 +131,26 @@ workflow process_input_data {
 
       process_desh(desh_csv_ch, desh_seq_gz)
       desh_in_ch = process_desh.out.desh_processed
+      desh_log = process_desh.out.log
+
     }
     else {
       gisaid_seq_gz.splitFasta(by: 2000, file:"sample.fasta").map{ file -> tuple("gisaid_${file.baseName}", file) }.set{ seq_ch }
       desh_in_ch = channel.empty()
+      desh_log = channel.empty()
      }
 
     process_gisaid(gisaid_meta_ch, gisaid_desh_map.ifEmpty(file("${projectDir}/assets/DUMMY")))
     gisaid_in_ch = process_gisaid.out.gisaid_processed
+    gisaid_log = process_gisaid.out.log
+
+    gisaid_log.concat(desh_log).collectFile(name: "process_input_data.log", storeDir: "${params.runinfo}").set{ process_input_data_log }
 
   emit:
     gisaid_in_ch
     desh_in_ch
     seq_ch
+    process_input_data_log
 
 }
 
@@ -157,36 +165,48 @@ workflow build_reference_db {
   main:
     filter_by_metadata(desh_in_ch, gisaid_in_ch)
     selection_df = filter_by_metadata.out.selection_df
+    selection_log = filter_by_metadata.out.log
     selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.fasta_id}.collectFile(newLine: true).set{ selected_ids }
     chunk_collector1 = seq_ch.combine(selected_ids)
 
     filter_sequences(chunk_collector1)
-    // filter out empty fiels covers case that a set of sequences to be filtered out happen to all b ecopmrised by one fasta chunk
+    filter_log = filter_sequences.out.log.collectFile()
+    // filter out empty files: covers case that a set of sequences to be filtered out happens to  be copmrised by one fasta chunk
     // TODO: log which chunks were removed?
     filtered_fasta = filter_sequences.out.filtered_fasta.filter{ it[1].size()>0 }
     chunk_collector2 = filtered_fasta.combine(wildtype).combine(selection_df)
 
     variant_call(chunk_collector2)
+    variant_call_log = variant_call.out.log.collectFile()
     chunk_lineages = variant_call.out.chunk_lineages
     chunk_lineages.collect{ it.splitCsv(header: false) }.flatten().unique().set{ lineage_ch }
 
     merge_vcf(lineage_ch)
+    merge_log = merge_vcf.out.log.collectFile()
     merged_lineage_vcf = merge_vcf.out.lineage
     merged_lineage_vcf.collectFile(newLine: true).set{ lineage_collector }
+    vcf_dir = file("${params.databases}/vcf")
+    tmp_file = vcf_dir.deleteDir()
+    println tmp_file ? "Delete $tmp_file" : "Cannot delete: $tmp_file"
 
     filter_by_aaf(lineage_collector, selection_df)
+    final_selection_log = filter_by_aaf.out.log
     final_selection_df = filter_by_aaf.out.final_selection_df
     final_selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.fasta_id}.collectFile(newLine: true).set{ final_ids }
     chunk_collector3 = filtered_fasta.combine( final_ids )
 
     filter_sequences_by_aaf(chunk_collector3)
+    final_filter_log = filter_sequences_by_aaf.out.log.collectFile()
     final_fasta_chunk = filter_sequences_by_aaf.out.filtered_fasta.filter{ it[1].size()>0 }
     final_fasta_chunk.map{ it -> it[1] }.set{ final_fasta }
     final_fasta.collectFile(newLine: true, name: "reference.fasta", storeDir: "${params.databases}/build_reference/").set{ reference_ch }
 
+    final_filter_log.concat(final_selection_log, merge_log, variant_call_log, filter_log,  selection_log).collectFile(name: "build_reference_db.log", storeDir:"${params.runinfo}").set{ build_reference_db_log }
+
   emit:
     reference_ch
     final_selection_df
+    build_reference_db_log
 
  }
 
@@ -200,14 +220,19 @@ workflow predict_abundances {
 
    main:
      build_index(reference_ch)
+     build_index_log = build_index.out.log
      kallisto_idx = build_index.out.kallisto_idx
      kallisto_in = QUERY.combine(kallisto_idx).combine(final_selection)
 
      kallisto_prediction(kallisto_in)
+     kallisto_log = kallisto_prediction.out.log.collectFile()
      prediction_ch = kallisto_prediction.out.prediction_ch
+
+     kallisto_log.concat(build_index_log).collectFile(name: "predict_abundances.log", storeDir: "${params.runinfo}").set{ predict_abundances_log }
 
    emit:
      prediction_ch
+     predict_abundances_log
  }
 
 
@@ -228,18 +253,27 @@ workflow {
   desh_in_ch = process_input_data.out.desh_in_ch
   gisaid_in_ch = process_input_data.out.gisaid_in_ch
   seq_ch  = process_input_data.out.seq_ch
+  process_input_data_log = process_input_data.out.process_input_data_log
   desh_in_ch.view()
   gisaid_in_ch.view()
+  process_input_data_log.view()
 
   build_reference_db( desh_in_ch.ifEmpty(file("${projectDir}/assets/DUMMY")), gisaid_in_ch, seq_ch )
   reference_ch = build_reference_db.out.reference_ch
   final_selection_df = build_reference_db.out.final_selection_df
+  build_reference_db_log = build_reference_db.out.build_reference_db_log
   final_selection_df.view()
   reference_ch.view()
+  //build_reference_db_log.view()
 
   predict_abundances(reference_ch, QUERY, final_selection_df)
   prediction_ch = predict_abundances.out.prediction_ch
+  predict_abundances_log = predict_abundances.out.predict_abundances_log
   prediction_ch.view()
+  predict_abundances_log.view()
+
+  process_input_data_log.concat(build_reference_db_log, predict_abundances_log).collectFile(name: "summary.log", storeDir: "${params.runinfo}").set{ summary_log }
+  summary_log.view()
 
   /**********************************************************
   * Coming soon: visualization of reference and output data
@@ -256,7 +290,14 @@ workflow {
 
 workflow.onComplete {
 
-summary = """-- You will find a fancy overview right here --"""
+summary = """"""
+log_file = file("${params.runinfo}/summary.log")
+logReader = log_file.newReader()
+String line
+while (line=logReader.readLine()) {
+if (line.startsWith('---')) { summary = summary + line + "\n" }
+}
+logReader.close()
 
 log.info """
 Execution status: ${ workflow.success ? 'OK' : 'failed' }
@@ -264,7 +305,7 @@ ______________________________________
 \u001B[36mExecution summary\033[0m
 ______________________________________
 $summary
-Summary report:                 ${params.runinfo}/...tbd
+Summary report:                 ${params.runinfo}/summary.log
 Lineage abundance predictions:  ${params.output}/QUERY/kallisto_out/predictions.tsv
 
 ______________________________________
@@ -303,6 +344,8 @@ def helpMSG() {
                                 ATTENTION: If desh input is provided, it is recommended to also input such a mapping
                                 file to avoid duplicates in the reference set! [default: empty str]
     Reference building:
+    --continent                 List of comma-separated continents to consider when selecting reference samples based
+                                on geography. [default: empty str]
     --country                   List of comma-separated countries to consider when selecting reference samples based
                                 on geography. [default: empty str]
     --startdate                 Earliest sampling date to consider when selecting reference samples based on the timepoint

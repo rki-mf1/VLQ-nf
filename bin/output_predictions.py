@@ -25,13 +25,16 @@ def main():
 
     if len(args.voc) != 0:
         vocs = args.voc[0].split(',')
+        print(f"--- Predicted abundances summarized for {vocs}")
     else:
         vocs = args.voc
+        print(f"--- Predicted abundances summarized for all lineages")
 
-    print("read data")
+    print("read abundance predictions and metadata")
     if args.metadata:
-        df = pd.read_csv(args.metadata, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+        df = pd.read_csv(args.metadata, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
 
+    print("get abundances per reference sequence, group by lineage and summarize quantification")
     abundance_dict = {}
     abundance_format = ""
     with open(args.abundances, 'r') as f:
@@ -72,12 +75,12 @@ def main():
             else:
                 abundance_dict[variant] = [tpm, abundance]
 
-    # compute corrected abundances
+    print("compute corrected abundances and filter for input VOCs")
     total_ab = sum([v[1] for v in abundance_dict.values()])
     with open(outfile, 'w') as f:
-        f.write("## evaluating {}\n".format(args.abundances))
-        f.write("## {}\n".format(' '.join(sys.argv)))
-        f.write("# variant\ttpm\tfreq(%)\tadj_freq(%)\n")
+        f.write("** evaluating {}\n".format(args.abundances))
+        f.write("** {}\n".format(' '.join(sys.argv)))
+        f.write("* variant\ttpm\tfreq(%)\tadj_freq(%)\n")
         for variant, values in abundance_dict.items():
             tpm, ab = values
             corrected_ab = ab / total_ab

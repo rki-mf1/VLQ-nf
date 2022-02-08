@@ -1,5 +1,5 @@
 process download_desh {
-  publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "download_desh.log"}
+  //publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "download_desh.log"}
   storeDir "${params.databases}/DESH/"
 
   output:
@@ -12,7 +12,7 @@ process download_desh {
   """
   #!/bin/bash
 
-  echo "--------------------\nDownload DESH data\n--------------------"
+  echo "--------------------Download DESH data--------------------"
 
   git clone https://github.com/robert-koch-institut/SARS-CoV-2-Sequenzdaten_aus_Deutschland.git
   """

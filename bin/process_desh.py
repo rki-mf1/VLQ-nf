@@ -29,7 +29,7 @@ def main():
     lineage_metadata = args.lineage[0]
     desh_fasta = args.fasta[0]
 
-    print('process desh data')
+    print('process metadata')
     metadata_df = read_filter_desh(sample_metadata, lineage_metadata, desh_fasta)
     metadata_df.to_csv('processed_desh_metadata.tsv', sep="\t", index=False)
 
@@ -44,6 +44,7 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     sample_df = pd.read_csv(sample_metadata, header=0, dtype=str)
     lineage_df = pd.read_csv(lineage_metadata, header=0, dtype=str)
     desh_df = pd.merge(sample_df, lineage_df, on='IMS_ID', how='inner')
+    x = sample_df.shape[0]
 
     # ensure correct data types for calculating number of non-ambiguous bases
     print('collect non-N counts per sample')
@@ -65,7 +66,7 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     desh_df = desh_df[desh_df.lineage != 'None']
     desh_df = desh_df[~desh_df.lineage.isna()]
 
-    print('format dates to datetime')
+    print('format dates')
     # adjust date representation in dataframe
     desh_df['date'] = pd.to_datetime(desh_df['DATE_DRAW'], yearfirst=True)
 
@@ -77,10 +78,13 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     desh_df['fasta_id'] = desh_df['IMS_ID']
     desh_df.rename(columns={'IMS_ID':'record_id'}, inplace=True)
 
-    print('add country information')
+    print('add country and continent information')
     desh_df['country'] = ['Germany']*desh_df.shape[0]
+    desh_df['continent'] = ['Europe']*desh_df.shape[0]
 
-    return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date','country']]
+    print(f'--- Remaining samples: {desh_df.shape[0]}/{x}')
+
+    return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date','country','continent']]
 
 
 ############################################

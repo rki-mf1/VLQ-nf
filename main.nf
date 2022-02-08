@@ -266,6 +266,7 @@ workflow {
   reference_ch.view()
   //build_reference_db_log.view()
 
+  /*
   predict_abundances(reference_ch, QUERY, final_selection_df)
   prediction_ch = predict_abundances.out.prediction_ch
   predict_abundances_log = predict_abundances.out.predict_abundances_log
@@ -273,6 +274,9 @@ workflow {
   predict_abundances_log.view()
 
   process_input_data_log.concat(build_reference_db_log, predict_abundances_log).collectFile(name: "summary.log", storeDir: "${params.runinfo}").set{ summary_log }
+  */
+  build_reference_db_log.concat(process_input_data_log).collectFile(name: "summary.log", storeDir: "${params.runinfo}").set{ summary_log }
+
   summary_log.view()
 
   /**********************************************************
@@ -305,8 +309,8 @@ ______________________________________
 \u001B[36mExecution summary\033[0m
 ______________________________________
 $summary
-Summary report:                 ${params.runinfo}/summary.log
-Lineage abundance predictions:  ${params.output}/QUERY/kallisto_out/predictions.tsv
+Summary report:                 ${params.runinfo}summary.log
+Lineage abundance predictions:  ${params.output}QUERY/kallisto_out/predictions.tsv
 
 ______________________________________
 """.stripIndent()

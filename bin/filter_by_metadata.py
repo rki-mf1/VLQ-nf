@@ -26,7 +26,7 @@ def main():
     parser.add_argument('-k', dest='select_k', type=int, default=1000, help="Specify how many samples to randomly select per lineage")
     parser.add_argument('--seed', dest='seed', default=0, type=int, help="random seed for sequence selection")
     args = parser.parse_args()
-
+    print(args.enddate)
     print('read data')
     gisaid_df = pd.read_csv(args.gisaid[0], sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
     if args.desh == None:
@@ -58,7 +58,7 @@ def main():
     if args.min_len:
         print(f"--- filter by minimum non 'N' count: {args.min_len}")
         metadata_df = metadata_df.loc[metadata_df['nonN'] >= args.min_len]
-    print(f"--- Remaining samples: {metadata_df.shape[0]}")
+    print(f"--- Remaining {metadata_df.shape[0]} samples and {len(metadata_df.lineage.unique())} lineages")
 
     print(f"--- Randomly select {args.select_k} samples per lineage")
     ### select sequences for each lineage from filtered metadata

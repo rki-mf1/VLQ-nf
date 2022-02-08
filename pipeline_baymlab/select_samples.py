@@ -47,7 +47,6 @@ def main():
 
     selection_df = select_ref_genomes(metadata_df, args.max_per_lineage, args.vcf,
                                       args.freq, args.min_aaf)
-    logger.debug(f"Final reference library contains {selection_df.shape[0]} samples")
     # Filter collectino of input fasta sequences according to selection and write new fasta
     fasta_out = args.outdir + "/reference_set/sequences.fasta"
     filter_fasta(args.fasta_in, fasta_out, selection_df)
@@ -151,7 +150,7 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
             logger.debug("ERROR: no sequences selected for lineage {}".format(lin_id))
             sys.exit(1)
 
-    logger.debug(f"{len(selection_ids)} sequences selected in total fo {len(selection_lineages)} lienages")
+    logger.debug(f"{len(selection_ids)} samples selected in total for {len(selection_lineages)} lineages")
     selection_df = metadata_df.loc[metadata_df["record_id"].isin(selection_ids)]
 
     return selection_df

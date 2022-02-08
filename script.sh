@@ -46,15 +46,15 @@ python ${SCRIPTPATH}/pipeline_baymlab/select_samples.py -f ${G_FASTA} --vcf ${OU
 
 
 
-#echo "Step 2: Predict variant abundances"
-#mkdir -p ${OUTDIR}/kallisto_out
-#kallisto index -i ${OUTDIR}/reference_set/sequences.kallisto_idx ${OUTDIR}/reference_set/sequences.fasta
-#for sample in ${QUERY}/*;
-#do
-# f=${sample##*/}
-#  f=${f%.*}
-#  kallisto quant -i ${OUTDIR}/reference_set/sequences.kallisto_idx -o ${OUTDIR}/kallisto_out/${f} --single -l 200 -s 20 -t 20 ${sample}
+echo "Step 2: Predict variant abundances"
+mkdir -p ${OUTDIR}/kallisto_out
+kallisto index -i ${OUTDIR}/reference_set/sequences.kallisto_idx ${OUTDIR}/reference_set/sequences.fasta
+for sample in ${QUERY}/*;
+do
+  f=${sample##*/}
+  f=${f%.*}
+  kallisto quant -i ${OUTDIR}/reference_set/sequences.kallisto_idx -o ${OUTDIR}/kallisto_out/${f} --single -l 200 -s 20 -t 20 ${sample}
   # summarize lineage abundances
-#  python ${SCRIPTPATH}/pipeline_baymlab/output_abundances.py --metadata ${OUTDIR}/seqs_per_lineage/metadata.tsv ${OUTDIR}/kallisto_out/${f}/abundance.tsv --log ${LOG_FILE}
-#done
+  python ${SCRIPTPATH}/pipeline_baymlab/output_abundances.py --metadata ${OUTDIR}/seqs_per_lineage/metadata.tsv ${OUTDIR}/kallisto_out/${f}/abundance.tsv --log ${LOG_FILE}
+done
 exit 0

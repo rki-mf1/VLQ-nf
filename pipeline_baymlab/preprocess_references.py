@@ -111,7 +111,7 @@ def main():
                     selection_dict[seq_name] = (lin_id, seq_id)
     logger.debug(f"Remaining: {len(selection_dict)} samples")
     # write sequences to separate files (structured by lineage)
-    logger.debug("searching fasta and writing sequences to output directory...")
+    logger.debug("searching fasta and writing matching sequences to output directory...")
     logger.debug("... GISAID data ...")
     n_gisaid, lineages_with_sequence, records = get_sequences(gisaid_fasta, selection_dict, args.outdir)
     if args.desh != None:

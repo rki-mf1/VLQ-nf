@@ -87,6 +87,7 @@ def main():
         logger.debug(f"filter by minimum non 'N' count: {args.min_len}")
         metadata_df = metadata_df.loc[metadata_df['nonN'] >= args.min_len]
 
+    logger.debug(f"Remaining: {metadata_df.shape[0]} samples and {len(metadata_df.lineage.unique())} lineages")
     logger.debug(f"Randomly select {args.select_k} samples per lineage")
     # select sequences for each lineage from filtered metadata
     selection_dict = {}
@@ -108,6 +109,7 @@ def main():
                 for i, seq_name in enumerate(seq_names):
                     seq_id =  seq_ids[i]
                     selection_dict[seq_name] = (lin_id, seq_id)
+    logger.debug(f"Remaining: {len(selection_dict)} samples")
     # write sequences to separate files (structured by lineage)
     logger.debug("searching fasta and writing sequences to output directory...")
     logger.debug("... GISAID data ...")

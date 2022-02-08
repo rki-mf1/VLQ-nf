@@ -7,6 +7,7 @@ process filter_sequences {
   output:
   tuple val(chunk_id), path("filtered_${multifasta}"), emit: filtered_fasta
   path ".command.log", emit:log
+  path "sample_counter.txt", emit: sample_counter
 
   script:
   """
@@ -15,6 +16,9 @@ process filter_sequences {
   echo "Filter sequences from multifasta"
 
   seqtk subseq $multifasta $selected_ids > filtered_$multifasta
+
+  counter=\$(grep '>' filtered_$multifasta | wc -l)
+  echo \$counter >> sample_counter.txt
 
   echo "_______________________________________________________________"
   """

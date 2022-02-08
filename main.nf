@@ -174,6 +174,9 @@ workflow build_reference_db {
     // filter out empty files: covers case that a set of sequences to be filtered out happens to  be copmrised by one fasta chunk
     // TODO: log which chunks were removed?
     filtered_fasta = filter_sequences.out.filtered_fasta.filter{ it[1].size()>0 }
+    filtered_fasta_counter = filter_sequences.out.sample_counter
+    filtered_fasta_count = filtered_fasta_counter.collectFile().splitCsv(header: false).flatten().toInteger().sum()
+    filtered_fasta_count.view()
     chunk_collector2 = filtered_fasta.combine(wildtype).combine(selection_df)
 
     variant_call(chunk_collector2)
@@ -197,6 +200,9 @@ workflow build_reference_db {
 
     filter_sequences_by_aaf(chunk_collector3)
     final_filter_log = filter_sequences_by_aaf.out.log.collectFile()
+    final_fasta_counter = filter_sequences_by_aaf.out.sample_counter
+    final_fasta_count = final_fasta_counter.collectFile().splitCsv(header: false).flatten().toInteger().sum()
+    final_fasta_count.view()
     final_fasta_chunk = filter_sequences_by_aaf.out.filtered_fasta.filter{ it[1].size()>0 }
     final_fasta_chunk.map{ it -> it[1] }.set{ final_fasta }
     final_fasta.collectFile(newLine: true, name: "reference.fasta", storeDir: "${params.databases}/build_reference/").set{ reference_ch }

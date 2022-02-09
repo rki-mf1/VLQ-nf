@@ -71,9 +71,11 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
     selection_ids = []
     selection_lineages = []
     for lin_id in lineages:
-        samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
+        logger.debug(f"Begin aaf filtering for lineage {lin_id}")
+        lin_samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
-        samples = samples.sort_values(by=["nonN", "date"], ascending=False)
+        lin_samples = lin_samples.sort_values(by=["nonN", "date"], ascending=False)
+        print(lin_samples)
         # read allele frequencies and extract sites with AAF >= minimal alt allele frequency
         try:
             allele_freq_file = freq_dict[lin_id]
@@ -129,9 +131,15 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
 
             # for each sample in lineage, check if it carries an allele for some relevant variant position that has not been captured yet
             # found one/some? => mark observed allele(s) for that variant position(s) and select sample as representative for genetic variation in lineage
-            for sample in samples:
+            name_map = {}
+            for sample in sample_patterns.keys():
+                name_map[sample.split('/')[-1]] = sample
+            lin_samples = lin_samples.loc[lin_samples["record_id"].isin(name_map.keys())]
+            for sample in lin_samples["record_id"]:
                 select = False
-                variation = sample_patterns[sample]
+                variation = sample_patterns[name_map[sample]]
+                logger.debug(f"sample: {sample}")
+                logger.debug(f"variation pattern:{variation}")
                 for i, pos in enumerate(variant_positions):
                     allele = variation[i]
                     if allele != '.':
@@ -139,10 +147,13 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
                             select = True
                             variation_seen[pos].append(allele)
                 if select:
-                    selection_ids.append(sample.split('/')[-1])
+                    selection_ids.append(sample)
                     selection_count += 1
+                    logger.debug(f"Selected sample {sample}, current count of representative sequences for {lin_id}: {selection_count}")
                     if selection_count == max_per_lineage:
-                        break
+                            break
+                else:
+                    logger.debug(f"Did not select sample {sample}")
         selection_lineages.append(lin_id)
         logger.debug("{} sequences selected for lineage {}".format(selection_count,
                                                             lin_id))

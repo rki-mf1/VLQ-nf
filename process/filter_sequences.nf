@@ -17,8 +17,9 @@ process filter_sequences {
 
   seqtk subseq $multifasta $selected_ids > filtered_$multifasta
 
-  counter=\$(grep '>' filtered_$multifasta | wc -l)
-  echo \$counter >> sample_counter.txt
+  #counter=\$(grep '>' filtered_$multifasta | wc -l)
+  #echo \$counter >> sample_counter.txt
+  grep '>' filtered_$multifasta >> sample_counter.txt
 
   echo "_______________________________________________________________"
   """

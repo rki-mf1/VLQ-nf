@@ -168,21 +168,31 @@ workflow build_reference_db {
     selection_log = filter_by_metadata.out.log
     selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.fasta_id}.collectFile(newLine: true).set{ selected_ids }
     chunk_collector1 = seq_ch.combine(selected_ids)
+    selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.fasta_id}.flatten().unique().count().view()
+    selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.lineage}.flatten().unique().count().view()
 
     filter_sequences(chunk_collector1)
     filter_log = filter_sequences.out.log.collectFile()
     // filter out empty files: covers case that a set of sequences to be filtered out happens to  be copmrised by one fasta chunk
-    // TODO: log which chunks were removed?
     filtered_fasta = filter_sequences.out.filtered_fasta.filter{ it[1].size()>0 }
-    filtered_fasta_counter = filter_sequences.out.sample_counter
-    filtered_fasta_count = filtered_fasta_counter.collectFile().splitCsv(header: false).flatten().toInteger().sum()
-    filtered_fasta_count.view()
+    filtered_fasta_counter = filter_sequences.out.sample_counter.filter{ it.size()>0 }
+    filtered_fasta_count = filtered_fasta_counter.collect{ it.splitCsv(header: false) }.flatten().map{ it -> it.replaceAll( />/, "" )}
+    filtered_fasta_count.filter{ item -> item=='EPI_ISL_1195379'}.view()
+    filtered_fasta_count.count().view()
+    filtered_lineages = filtered_fasta_count.join(selection_df.splitCsv(header: true, sep: '\t').map{ row ->  tuple(row.fasta_id, row.lineage) }).map{ it -> it[1] }.unique()
+    filtered_lineages.count().view()
     chunk_collector2 = filtered_fasta.combine(wildtype).combine(selection_df)
+    chunk_collector2.filter{ item -> item=='EPI_ISL_1195379'}.view()
 
     variant_call(chunk_collector2)
     variant_call_log = variant_call.out.log.collectFile()
     chunk_lineages = variant_call.out.chunk_lineages
+    chunk_samples = variant_call.out.chunk_samples
     chunk_lineages.collect{ it.splitCsv(header: false) }.flatten().unique().set{ lineage_ch }
+    chunk_samples.collect{ it.splitCsv(header: false) }.flatten().unique().set{ sample_ch }
+    sample_ch.filter{ item -> item=='EPI_ISL_1195379'}.view()
+    lineage_ch.count().view()
+    sample_ch.count().view()
 
     merge_vcf(lineage_ch)
     merge_log = merge_vcf.out.log.collectFile()
@@ -192,19 +202,24 @@ workflow build_reference_db {
     tmp_file = vcf_dir.deleteDir()
     println tmp_file ? "Delete $tmp_file" : "Cannot delete: $tmp_file"
 
+
     filter_by_aaf(lineage_collector, selection_df)
     final_selection_log = filter_by_aaf.out.log
     final_selection_df = filter_by_aaf.out.final_selection_df
     final_selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.fasta_id}.collectFile(newLine: true).set{ final_ids }
+    final_ids.collect{ it.splitCsv(header:false) }.flatten().count().view()
     chunk_collector3 = filtered_fasta.combine( final_ids )
 
     filter_sequences_by_aaf(chunk_collector3)
     final_filter_log = filter_sequences_by_aaf.out.log.collectFile()
-    final_fasta_counter = filter_sequences_by_aaf.out.sample_counter
-    final_fasta_count = final_fasta_counter.collectFile().splitCsv(header: false).flatten().toInteger().sum()
-    final_fasta_count.view()
+    final_fasta_headers = filter_sequences_by_aaf.out.sample_counter.filter{ it.size() > 0 }
+    final_fasta_ids = final_fasta_headers.collect{ it.splitCsv(header: false) }.flatten().map{ it -> it.replaceAll( />/, "" )}
+    final_lineages = final_fasta_ids.join(final_selection_df.splitCsv(header: true, sep: '\t').map{ row ->  tuple(row.fasta_id, row.lineage) }).map{ it -> it[1] }.unique()
+    final_fasta_ids.count().view()
+    final_lineages.count().view()
     final_fasta_chunk = filter_sequences_by_aaf.out.filtered_fasta.filter{ it[1].size()>0 }
     final_fasta_chunk.map{ it -> it[1] }.set{ final_fasta }
+    final_fasta.view()
     final_fasta.collectFile(newLine: true, name: "reference.fasta", storeDir: "${params.databases}/build_reference/").set{ reference_ch }
 
     final_filter_log.concat(final_selection_log, merge_log, variant_call_log, filter_log,  selection_log).collectFile(name: "build_reference_db.log", storeDir:"${params.runinfo}").set{ build_reference_db_log }

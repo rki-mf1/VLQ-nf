@@ -1,6 +1,6 @@
 process variant_call {
   maxForks 4
-  //publishDir "${params.runinfo}/variant_call/", mode: 'copy', pattern: "${chunk_id}_paftools.log"
+  publishDir "${params.runinfo}/build_reference/", mode: 'copy', pattern: "${chunk_id}_samples.txt"
   publishDir "${params.databases}/build_reference/vcf", mode: 'copy', pattern: "*_${chunk_id}_merged.vcf.gz"
 
   input:
@@ -8,6 +8,7 @@ process variant_call {
 
   output:
   path "${chunk_id}_lineages.txt", emit: chunk_lineages
+  path "${chunk_id}_samples.txt", emit: chunk_samples
   path "*_${chunk_id}_merged.vcf.gz"
   path "${chunk_id}_paftools.log", emit: log
 
@@ -59,9 +60,13 @@ process variant_call {
   done
 
   touch ${chunk_id}_paftools.log
+  touch ${chunk_id}_samples.txt
   cat .command.log >> ${chunk_id}_paftools.log
   for file in fasta/*/*paftools.log; do
     cat \$file >> ${chunk_id}_paftools.log
+    filename=\${file##*/}
+    tmp_filename=\${filename#*_}
+    echo \${tmp_filename%.paftools.log}>> ${chunk_id}_samples.txt
   done
 
   """

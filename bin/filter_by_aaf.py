@@ -53,6 +53,7 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
     freq_dict = {fname.split('/')[-1].split('_')[0] : fname for fname in freq_list}
     selection_ids = []
     for lin_id in lineages:
+        print(f"Begin aaf filtering for lineage {lin_id}")
         samples = meta_df.loc[meta_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
         samples = meta_df.sort_values(by=["nonN", "date"], ascending=False)
@@ -115,6 +116,8 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
             for sample in vcf_samples:
                 select = False
                 variation = sample_patterns[sample]
+                print(f"sample: {sample}")
+                print(f"variation pattern:{variation}")
                 for i, pos in enumerate(variant_positions):
                     allele = variation[i]
                     if allele != '.':
@@ -125,8 +128,11 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
                     sample_id = '_'.join(sample.split('_')[1:])
                     selection_ids.append(sample_id)
                     selection_count += 1
+                    print(f"Selected sample {sample_id}, current count of representative sequences for {lin_id}: {selection_count}")
                     if selection_count == max_per_lineage:
                         break
+                else:
+                    print(f"Did not select sample {sample_id}")
         print("--- {} sequences selected for lineage {}".format(selection_count,lin_id))
         if selection_count == 0:
             print("ERROR: no sequences selected for lineage {}".format(lin_id))

@@ -177,6 +177,7 @@ workflow build_reference_db {
     filtered_fasta = filter_sequences.out.filtered_fasta.filter{ it[1].size()>0 }
     filtered_fasta_counter = filter_sequences.out.sample_counter.filter{ it.size()>0 }
     filtered_fasta_count = filtered_fasta_counter.collect{ it.splitCsv(header: false) }.flatten().map{ it -> it.replaceAll( />/, "" )}
+    filtered_fasta_count.collectFile(newLine: true, name: "filtered_fasta.txt", storeDir: "${params.databases}/build_reference/")
     filtered_fasta_count.filter{ item -> item=='EPI_ISL_1195379'}.view()
     filtered_fasta_count.count().view()
     filtered_lineages = filtered_fasta_count.join(selection_df.splitCsv(header: true, sep: '\t').map{ row ->  tuple(row.fasta_id, row.lineage) }).map{ it -> it[1] }.unique()
@@ -190,6 +191,7 @@ workflow build_reference_db {
     chunk_samples = variant_call.out.chunk_samples
     chunk_lineages.collect{ it.splitCsv(header: false) }.flatten().unique().set{ lineage_ch }
     chunk_samples.collect{ it.splitCsv(header: false) }.flatten().unique().set{ sample_ch }
+    chunk_samples.collectFile(newLine: true, name: "chunk_samples.txt", storeDir: "${params.databases}/build_reference/")
     sample_ch.filter{ item -> item=='EPI_ISL_1195379'}.view()
     lineage_ch.count().view()
     sample_ch.count().view()
@@ -219,7 +221,6 @@ workflow build_reference_db {
     final_lineages.count().view()
     final_fasta_chunk = filter_sequences_by_aaf.out.filtered_fasta.filter{ it[1].size()>0 }
     final_fasta_chunk.map{ it -> it[1] }.set{ final_fasta }
-    final_fasta.view()
     final_fasta.collectFile(newLine: true, name: "reference.fasta", storeDir: "${params.databases}/build_reference/").set{ reference_ch }
 
     final_filter_log.concat(final_selection_log, merge_log, variant_call_log, filter_log,  selection_log).collectFile(name: "build_reference_db.log", storeDir:"${params.runinfo}").set{ build_reference_db_log }

@@ -1,6 +1,6 @@
 process build_index {
   //publishDir "${params.runinfo}/", mode: 'copy', pattern: ".command.log", saveAs: {filename -> "build_index.log"}
-  publishDir "${params.databases}/", mode: 'copy', pattern: "sequences.kallisto.idx"
+  publishDir "${params.databases}/", mode: 'copy', pattern: "sequences.kallisto_idx"
 
   input:
   path fasta

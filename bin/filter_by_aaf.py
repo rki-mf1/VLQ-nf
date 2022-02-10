@@ -26,8 +26,6 @@ def main():
 
 
     print("read data")
-
-    print(glob(args.vcf[0]))
     vcf_list = [ glob(file)[0] for file in args.vcf]
     freq_list = [ glob(file)[0] for file in args.freq]
     metadata_df = pd.read_csv(args.metadata[0], header=0, sep='\t',dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
@@ -54,9 +52,10 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
     selection_ids = []
     for lin_id in lineages:
         print(f"Begin aaf filtering for lineage {lin_id}")
-        samples = meta_df.loc[meta_df["lineage"] == lin_id]
+        lin_samples = meta_df.loc[meta_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
-        samples = meta_df.sort_values(by=["nonN", "date"], ascending=False)
+        lin_samples = lin_samples.sort_values(by=["nonN", "date", "record_id"], ascending=False)
+        print(lin_samples)
         # read allele frequencies and extract sites with AAF >= minimal alt allele frequency
         try:
             allele_freq_file = freq_dict[lin_id]
@@ -113,9 +112,13 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
 
             # for each sample in lineage, check if it carries an allele for some relevant variant position that has not been captured yet
             # found one/some? => mark observed allele(s) for that variant position(s) and select sample as representative for genetic variation in lineage
-            for sample in vcf_samples:
+            name_map = {}
+            for sample in sample_patterns.keys():
+                name_map['_'.join(sample.split('_')[1:])] = sample
+            lin_samples = lin_samples.loc[lin_samples["record_id"].isin(name_map.keys())]
+            for sample in lin_samples["record_id"]:
                 select = False
-                variation = sample_patterns[sample]
+                variation = sample_patterns[name_map[sample]]
                 print(f"sample: {sample}")
                 print(f"variation pattern:{variation}")
                 for i, pos in enumerate(variant_positions):
@@ -125,14 +128,13 @@ def select_ref_genomes(meta_df, max_per_lineage, vcf_list, freq_list, min_aaf):
                             select = True
                             variation_seen[pos].append(allele)
                 if select:
-                    sample_id = '_'.join(sample.split('_')[1:])
-                    selection_ids.append(sample_id)
+                    selection_ids.append(sample)
                     selection_count += 1
-                    print(f"Selected sample {sample_id}, current count of representative sequences for {lin_id}: {selection_count}")
+                    print(f"Selected sample {sample}, current count of representative sequences for {lin_id}: {selection_count}")
                     if selection_count == max_per_lineage:
                         break
                 else:
-                    print(f"Did not select sample {sample_id}")
+                    print(f"Did not select sample {sample}")
         print("--- {} sequences selected for lineage {}".format(selection_count,lin_id))
         if selection_count == 0:
             print("ERROR: no sequences selected for lineage {}".format(lin_id))

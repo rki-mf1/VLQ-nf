@@ -53,11 +53,11 @@ conda activate sc2-sewage
 ```
 Execute program like this for using only GISAID data:
 ```
-nextflow run main.nf --gisaid /PATH/TO/GISAID_DATA/ --query PATH/TO/QUERY_FASTQ_FILES/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
+nextflow run main.nf --gisaid /PATH/TO/GISAID_DATA/ --query test/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
 ```
 Execute like this for using both GISAID and DESH as data sources:
 ```
-nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/TO/DESH_DATA/ --gisaid_desh_map /PATH/TO/MAPPING/FILE --query PATH/TO/QUERY_FASTQ_FILES/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
+nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/TO/DESH_DATA/ --gisaid_desh_map /PATH/TO/MAPPING/FILE --query test/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
 ```
 ### Notes on input and query data:
 - ``--gisaid`` input should be the path to a folder containing two files:

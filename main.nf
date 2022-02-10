@@ -178,12 +178,10 @@ workflow build_reference_db {
     filtered_fasta_counter = filter_sequences.out.sample_counter.filter{ it.size()>0 }
     filtered_fasta_count = filtered_fasta_counter.collect{ it.splitCsv(header: false) }.flatten().map{ it -> it.replaceAll( />/, "" )}
     filtered_fasta_count.collectFile(newLine: true, name: "filtered_fasta.txt", storeDir: "${params.databases}/build_reference/")
-    filtered_fasta_count.filter{ item -> item=='EPI_ISL_1195379'}.view()
     filtered_fasta_count.count().view()
     filtered_lineages = filtered_fasta_count.join(selection_df.splitCsv(header: true, sep: '\t').map{ row ->  tuple(row.fasta_id, row.lineage) }).map{ it -> it[1] }.unique()
     filtered_lineages.count().view()
     chunk_collector2 = filtered_fasta.combine(wildtype).combine(selection_df)
-    chunk_collector2.filter{ item -> item=='EPI_ISL_1195379'}.view()
 
     variant_call(chunk_collector2)
     variant_call_log = variant_call.out.log.collectFile()
@@ -192,7 +190,6 @@ workflow build_reference_db {
     chunk_lineages.collect{ it.splitCsv(header: false) }.flatten().unique().set{ lineage_ch }
     chunk_samples.collect{ it.splitCsv(header: false) }.flatten().unique().set{ sample_ch }
     chunk_samples.collectFile(newLine: true, name: "chunk_samples.txt", storeDir: "${params.databases}/build_reference/")
-    sample_ch.filter{ item -> item=='EPI_ISL_1195379'}.view()
     lineage_ch.count().view()
     sample_ch.count().view()
 
@@ -288,7 +285,7 @@ workflow {
   reference_ch.view()
   //build_reference_db_log.view()
 
-  /*
+  
   predict_abundances(reference_ch, QUERY, final_selection_df)
   prediction_ch = predict_abundances.out.prediction_ch
   predict_abundances_log = predict_abundances.out.predict_abundances_log
@@ -296,7 +293,7 @@ workflow {
   predict_abundances_log.view()
 
   process_input_data_log.concat(build_reference_db_log, predict_abundances_log).collectFile(name: "summary.log", storeDir: "${params.runinfo}").set{ summary_log }
-  */
+
   build_reference_db_log.concat(process_input_data_log).collectFile(name: "summary.log", storeDir: "${params.runinfo}").set{ summary_log }
 
   summary_log.view()

@@ -74,7 +74,7 @@ def select_ref_genomes(metadata_df, max_per_lineage, vcf_list, freq_list, min_aa
         logger.debug(f"Begin aaf filtering for lineage {lin_id}")
         lin_samples = metadata_df.loc[metadata_df["lineage"] == lin_id]
         # sort by descending nonN count and actuality
-        lin_samples = lin_samples.sort_values(by=["nonN", "date"], ascending=False)
+        lin_samples = lin_samples.sort_values(by=["nonN", "date","record_id"], ascending=False)
         print(lin_samples)
         # read allele frequencies and extract sites with AAF >= minimal alt allele frequency
         try:

@@ -313,8 +313,10 @@ def helpMSG() {
 
 
     Mandatory arguments:
-    --gisaid                    Path to folder storing metadata and sequence files from gisaid
+    --gisaid                    Path to folder storing metadata and sequence files from gisaid for reference building
                                 (file names: "*metadata*" (.tar.xz) and "*fasta*" (.fasta, .fasta.xz or .tar packed fasta)).
+    or
+    --reference                 Path to folder containing an already build reference metadata csv and reference fasta file
     --query                     Path to folder storing query fastq files
                                 (fastq files are allowed to be .gz compressed)
 
@@ -335,7 +337,6 @@ def helpMSG() {
                                 on geography. Inform yourself how country names are captured by GISAID.
                                 Whitespaces in country names need to be replaced by underscore.
                                 Example: "North_America"
-                                [default: empty str]
                                 [default: empty str]
     --country                   List of comma-separated countries to consider when selecting reference samples based
                                 on geography. Inform yourself how country names are captured by GISAID.

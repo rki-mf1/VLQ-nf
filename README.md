@@ -13,15 +13,16 @@ tbd
     - select human samples only
     - if DESH data provided, filter out overlapping samples between the two data sets
     - drop samples with no 'N' count or lineage information available
-    - drop duplicates by virus name, submission date and collection date (need to construct fasta header to access sequences and there would exist duplicates otherwise)
-    - create fasta headers from 'Virus name', 'Collection date' and 'Submission date'
+    - drop duplicates
+    - add country and continent information
     - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'Accession ID' ('record\_id')
-    - filter by country or continent
   - DESH:
     - get non 'N' count from sequence data
     - filter out samples with no lineage information available
-    - drop duplicates by 'IMS\_ID'
+    - drop duplicates
+    - add country and continent column
     - create consistent scheme for GISAID and DESH by renaming collection date ('date') and 'IMS\_ID' ('record\_id')
+- Filter records by country or continent
 - Filter records by sample collection date
 - Remove sequences with less than X non-ambiguous calls
 - Sample k sequences to represent each lineage
@@ -69,9 +70,6 @@ nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/
 - ``--query`` input should be the path to a folder containing *.fastq* or *fastq.gz* files that should be analysed on the same reference data set lie in the same folder ``PATH/TO/QUERY_FASTQ_FILES/``
 
 
-**Development Note**:
-Currently, it is only possible to filter either by countries or by continents, but not both.
-
 ### Test data
 tbd
 
@@ -83,13 +81,35 @@ nextflow run main.nf --help
 | Parameter | Type | Description | Default |  
 |---	|---	|---	|---	|
 | *Mandatory:* |  	|  	|  	|
-| --argument |  	|  	|  	|  
+| - -gisaid | String | Path to folder storing metadata and sequence files from gisaid for reference building <br>filenames: "\*metadata\*" (.tar.xz) and "\*fasta\*" (.fasta, .fasta.xz or .tar packed fasta). | None |  
+| or - -reference | String	| Path to folder containing an already build reference metadata csv and reference fasta file	| None |  
+| - -query | String | Path to folder storing query fastq files (fastq files are allowed to be .gz compressed) | None |  
 | *Optional:* |  	|  	|  	|  
-| --argument 	|  	|  	|  	|  
-|  *Reference building:*	|  	|  	|  	|  	
-| --argument 	|  	|  	|  	|  
-|  *Kallisto*	|  	|  	|  	|  	
-| --argument 	|  	|  	|  	|  
+| - -desh | Boolean| Boolean parameter, if true, program includes DESH data into the reference building | false |
+| - -desh_data | String | Path to folder storing metadata, lineage data and sequence data from gisaid:<br>**metadata filenames:**   SARS-CoV-2-Sequenzdaten_Deutschland.csv.xz, SARS-CoV-2-Entwicklungslinien_Deutschland.csv.xz<br>**sequence data filename:** "\*fasta\*" (.fasta, .fasta.xz or .tar packed fasta) | None |
+| - -gisaid_desh_map | String | Path to .csv file mapping accession ids of overlapping samples between desh and gisaid. If desh input is provided, it is recommended to also input such a mapping file to avoid duplicates in the reference set!  | None |  
+| *Reference building:* |  	|  	|  	|  	
+| - -continent	| List of Strings	| List of comma-separated continents to consider when selecting reference samples based on geography. Inform yourself how country names are captured by GISAID. Whitespaces in country names need to be replaced by underscore. <br>Example: North_America | None	|  
+| - -country	| List of Strings	| List of comma-separated countries to consider when selecting reference samples based on geography. Inform yourself how country names are captured by GISAID. Whitespaces in country names need to be replaced by underscore.<br> Example: Bosnia_Herzegovina | None |  
+| - -startdate | String | Earliest sampling date to consider when selecting reference samples based on the timepoint of sample drawing. | YYYY-MM-DD |  
+| - -enddate | String | Latest sampling date to consider when selecting reference samples based on the timepoint of sample drawing. | YYYY-MM-DD |  
+| - -min_len | Int	| Don't select sequences with less than the specified minimal number of non-ambiguous nucleotides. | 29500 |  
+| - -k | Int | Specify how many samples to randomly select per lineage when filtering based on metadata. | 1000 |  
+| - -seed | Int | Random seed for sequence selection  | 0 |  
+| - -min_aaf | Float | Minimal alternative allele frequency (AAF) to consider for representative lineage variation. | 0.5 |  
+| - -max_per_lineage | Int | Maximum number of lineages to select to represent a lineages genomic variation. | 100 |  
+|  *Kallisto*	|  	|  For more information on kallisto, e.g. regarding single and paired-end fastq queries, see https://pachterlab.github.io/kallisto/manual |  	|  	
+| - -fragment_length	| Int | Estimated average fragment length. | 200 |
+| - -fragment_length_sd | Int | Estimated standard deviation of fragment length. | 20 |  
+| - -kallisto_threads | Int | Number of threads to use. | 20 |  
+|  *Output*	|  	|  	|  	|  	
+| - -min_ab | Float | Summarize output for all lineages whose estimated abundance is above this minimum threshold. | 0 |
+|  *Nextflow options*	|  	|  	|  	|  	
+| -output | String	| path to output folder | results/ |
+| -runinfo | String	| path to folder storing log files | nextflow-run-infos/	|
+| -databases | String | path to folder storing intermediate files and reference data | nextflow-databases/	|
+**Note**:   Paths of listed folders need to be relative to location of main.nf
+
 
 ## Output
 ### Results

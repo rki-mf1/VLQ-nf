@@ -19,11 +19,11 @@ def main():
     multifasta = args.multifasta[0]
 
     print('read data')
-    metadata_df = pd.read_csv(sample_metadata, sep='\t', header=0, dtype={'record_id':str, 'fasta_id':str,'nonN':int,'lineage':str,'date':str,'country':str})
+    metadata_df = pd.read_csv(sample_metadata, sep='\t', header=0, dtype={'record_id':str, 'nonN':int,'lineage':str,'date':str,'country':str})
 
     print('parse multifasta records, get lineage and write to fasta')
     for record in SeqIO.parse(open(multifasta),'fasta'):
-        lineage = metadata_df[metadata_df['fasta_id'] == record.id].lineage.item()
+        lineage = metadata_df[metadata_df['record_id'] == record.id].lineage.item()
         dir_name = "fasta/"+lineage
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)

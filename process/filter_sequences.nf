@@ -1,13 +1,13 @@
 process filter_sequences {
-  //publishDir "${params.runinfo}/", mode: 'copy', pattern: "filter_sequences.log"
+
 
   input:
   tuple val(chunk_id), path(multifasta), path(selected_ids)
 
   output:
   tuple val(chunk_id), path("filtered_${multifasta}"), emit: filtered_fasta
-  path ".command.log", emit:log
-  path "sample_counter.txt", emit: sample_counter
+  //path ".command.log", emit:log
+  //path "sample_counter.txt", emit: sample_counter
 
   script:
   """
@@ -19,7 +19,7 @@ process filter_sequences {
 
   #counter=\$(grep '>' filtered_$multifasta | wc -l)
   #echo \$counter >> sample_counter.txt
-  grep '>' filtered_$multifasta >> sample_counter.txt
+  #grep '>' filtered_$multifasta >> sample_counter.txt
 
   echo "_______________________________________________________________"
   """

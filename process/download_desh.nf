@@ -1,5 +1,4 @@
 process download_desh {
-  //publishDir "${params.runinfo}/", mode: 'copy', pattern: '.command.log', saveAs: {filename -> "download_desh.log"}
   storeDir "${params.databases}/DESH/"
 
   output:

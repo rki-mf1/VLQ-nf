@@ -62,26 +62,29 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     print('remove samples wich have no location information (NaN or None)')
     df = df[df["Location"].notna()]
     df = df[df["Location"] != "None"]
-    df['continent'] = df["Location"].apply(lambda x: x.split('/')[0].strip())
+    print("replace whitespace with underscore")
+    df['continent'] = df["Location"].apply(lambda x: x.split('/')[0].strip().replace(' ','_'))
 
     print('adjust date representation in dataframe')
     df["date"] = pd.to_datetime(df["Collection date"], yearfirst=True)
 
-    #print('remove duplicate sequences')
+    print('remove duplicate sequences')
     # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
     #df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
+    df.drop_duplicates(subset=["Accession ID"],inplace=True,ignore_index=True, keep=False)
     #print('add fasta sequence header for mapping')
     #df['fasta_id'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
     ####### NOTE: removed since currently working on GISAID data from RKI API where fasta id == EPI_ISL id
-    df['fasta_id'] = df['Accession ID']
+    #df['fasta_id'] = df['Accession ID']
+    print("use accession id as record id")
     df.rename(columns={'Accession ID':'record_id'}, inplace=True)
 
-    print('format country')
-    df['country'] = df["Location"].apply(lambda x: x.split('/')[1].strip())
+    print('retrieve country information, replace whitespace by underscore')
+    df['country'] = df["Location"].apply(lambda x: x.split('/')[1].strip().replace(' ','_'))
 
     print(f'--- Remaining samples: {df.shape[0]}/{x}')
 
-    return df[['record_id', 'fasta_id','nonN','lineage','date','country', 'continent']]
+    return df[['record_id', 'nonN','lineage','date','country', 'continent']]
 
 
 

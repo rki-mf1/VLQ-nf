@@ -73,9 +73,9 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
     print('remove duplicate entries based on IMS_ID')
     desh_df.drop_duplicates(subset=['IMS_ID'], inplace=True, keep=False, ignore_index=True)
 
-    print('reformat identification columns (add IMS_ID as fasta id)')
+    print('reformat identification columns (add IMS_ID as record id)')
     # rename IMS_ID, add fasta_id column
-    desh_df['fasta_id'] = desh_df['IMS_ID']
+    #desh_df['fasta_id'] = desh_df['IMS_ID']
     desh_df.rename(columns={'IMS_ID':'record_id'}, inplace=True)
 
     print('add country and continent information')
@@ -84,7 +84,7 @@ def read_filter_desh(sample_metadata, lineage_metadata, desh_fasta):
 
     print(f'--- Remaining samples: {desh_df.shape[0]}/{x}')
 
-    return desh_df[['record_id', 'fasta_id', 'nonN','lineage','date','country','continent']]
+    return desh_df[['record_id', 'nonN','lineage','date','country','continent']]
 
 
 ############################################

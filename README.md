@@ -1,4 +1,4 @@
-# sc2_sewage
+# sc2-sewage
 Estimate sc2 lineage abundances from wastewater samples
 
 ## Summary
@@ -42,7 +42,7 @@ tbd
 * [DESH](https://github.com/robert-koch-institut/SARS-CoV-2-Sequenzdaten_aus_Deutschland) lineage data, metadata and sequence data (*csv* and *fasta*, all *.xz*-compressed)
 * [Mapping file](https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/DESH/Abfrage-GISAID.pdf?__blob=publicationFile) for DESH and GISAID ids (*tsv* file containing the EPI\_ISL ids of the DESH submissions in GISAID)
 * Wastewater reads (*fastq*, *fastq*.gz)
-**IMPORTANT: CURRENTLY THE TOOL ONLY RUNS FOR GISAID DATA THAT WAS RETRIEVED FROM THE RKI GIASID API**
+**Development Note**: CURRENTLY THE TOOL ONLY RUNS FOR GISAID DATA THAT WAS RETRIEVED FROM THE RKI GIASID API.
 This means, in order to run the program on manually downloaded data, the fasta ids in sequence file need to be mapped with the metadata file and rpelaced by the corresponding Accession id which is the EPI\_ISL id.
 
 ## Usage
@@ -59,7 +59,7 @@ Execute like this for using both GISAID and DESH as data sources:
 ```
 nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/TO/DESH_DATA/ --gisaid_desh_map /PATH/TO/MAPPING/FILE --query test/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
 ```
-### Notes on input and query data:
+### Handling of input and query data:
 - ``--gisaid`` input should be the path to a folder containing two files:
   1. The sequence fasta file having the substring "fasta" somewhere in its filename
   2. The metadata file having the substring "metadata" somewhere in its filename. The sequence file currently has to be '.gz'.
@@ -67,6 +67,10 @@ nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/
   - If ``--desh`` is _true_, lineage data, sequence data and metadata are retrieved from the folder located at ``--desh_data``. The  sequence data file should contain the substring "fasta" in its name and currently has to already be decompressed from *.xz* format  and *.gz*-compressed.
   - If ``--desh`` is _false_, only GISAID data is used.
 - ``--query`` input should be the path to a folder containing *.fastq* or *fastq.gz* files that should be analysed on the same reference data set lie in the same folder ``PATH/TO/QUERY_FASTQ_FILES/``
+
+
+**Development Note**:
+Currently, it is only possible to filter either by countries or by continents, but not both.
 
 ### Test data
 tbd
@@ -86,7 +90,7 @@ nextflow run main.nf --help
 | --argument 	|  	|  	|  	|  
 |  *Kallisto*	|  	|  	|  	|  	
 | --argument 	|  	|  	|  	|  
-**Always use full file paths**
+
 ## Output
 ### Results
 All output is written to ``results/``:

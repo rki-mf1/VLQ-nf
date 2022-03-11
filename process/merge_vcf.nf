@@ -32,7 +32,7 @@ process merge_vcf {
   vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --site-pi
   vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --freq
 
-  rm ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz
+  rm ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz*
 
   """
 

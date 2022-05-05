@@ -47,16 +47,20 @@ if (!params.query) {
 **************************/
 if (!params.reference) {
   gisaid_meta_ch = channel.fromPath("${params.gisaid}/*metadata*", checkIfExists: true)
-  gisaid_seq_ch = channel.fromPath("${params.gisaid}/*fasta*", checkIfExists: true)
+  gisaid_seq_ch = channel.fromPath("${params.gisaid}/*fa*", checkIfExists: true)
   gisaid_meta_ch.view()
   gisaid_seq_ch.view()
 }
 
 wildtype = channel.fromPath("${projectDir}/assets/NC_045512.2.fasta", checkIfExists:true)
 
-QUERY = channel.fromPath("${params.query}/*.fastq*", checkIfExists: true)
-
-
+if (params.single_end) {
+  QUERY = channel.fromPath("${params.query}/*.fastq*", checkIfExists: true)
+}
+else {
+  QUERY = channel.fromFilePairs("${params.query}/*_{1,2}.fastq*", checkIfExists: true)
+}
+QUERY.view()
 
 /**************************
 * PROCESSES
@@ -73,7 +77,8 @@ include { variant_call } from './process/variant_call'
 include { merge_vcf } from './process/merge_vcf'
 include { filter_by_aaf } from './process/filter_by_aaf'
 include { build_index } from './process/build_index'
-include { kallisto_prediction } from './process/kallisto_prediction'
+include { kallisto_prediction_single } from './process/kallisto_prediction_single'
+include { kallisto_prediction_paired } from './process/kallisto_prediction_paired'
 
 
 
@@ -81,6 +86,7 @@ include { kallisto_prediction } from './process/kallisto_prediction'
 * DATABASES
 *************************/
 
+// !! Under construction: not guaranteed to work !!
 workflow get_desh {
 
   main:
@@ -119,14 +125,16 @@ workflow process_input_data {
     gisaid_desh_map
 
   main:
-    gzip_fasta(gisaid_seq_ch)
-    gisaid_seq_gz = gzip_fasta.out.gz_fasta
-    //gisaid_seq_gz = gisaid_seq_ch
+    // !! Under construction: currently only working on unpacked or gzipped FASTA !!
+    //gzip_fasta(gisaid_seq_ch)
+    //gisaid_seq_gz = gzip_fasta.out.gz_fasta
+    gisaid_seq_gz = gisaid_seq_ch
 
+    // !! Under construction: not guaranteed to work !!
     if (params.desh) {
-      gzip_fasta2(desh_seq_ch)
-      desh_seq_gz = gzip_fasta2.out.gz_fasta
-      //desh_seq_gz = desh_seq_ch
+      //gzip_fasta2(desh_seq_ch)
+      //desh_seq_gz = gzip_fasta2.out.gz_fasta
+      desh_seq_gz = desh_seq_ch
 
       gisaid_seq_gz.splitFasta(by: 2000, file:"sample.fasta").map{ file -> tuple("gisaid_${file.baseName}", file) }.set{ gisaid_fasta_ch }
       desh_seq_gz.splitFasta(by: 2000, file:"sample.fasta").map{ file -> tuple("desh_${file.baseName}", file) }.set{ desh_fasta_ch }
@@ -165,12 +173,10 @@ workflow build_reference_db {
     selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.record_id}.collectFile(newLine: true).set{ selected_ids }
     chunk_collector1 = seq_ch.combine(selected_ids)
 
-
     filter_sequences(chunk_collector1)
     // filter out empty files: covers case that a set of sequences to be filtered out happens to  be copmrised by one fasta chunk
     filtered_fasta = filter_sequences.out.filtered_fasta.filter{ it[1].size()>0 }
     chunk_collector2 = filtered_fasta.combine(wildtype).combine(selection_df)
-
 
     variant_call(chunk_collector2)
     variant_call_log = variant_call.out.log.collectFile(name: "variant_call.log", storeDir:"${params.runinfo}")
@@ -182,12 +188,10 @@ workflow build_reference_db {
     merged_lineage_vcf = merge_vcf.out.lineage
     merged_lineage_vcf.collectFile(newLine: true).set{ lineage_collector }
 
-
     filter_by_aaf(lineage_collector, selection_df)
     final_selection_df = filter_by_aaf.out.final_selection_df
     final_selection_df.splitCsv(header: true, sep: '\t').map{ row -> row.record_id}.collectFile(newLine: true).set{ final_ids }
     chunk_collector3 = filtered_fasta.combine( final_ids )
-
 
     filter_sequences_by_aaf(chunk_collector3)
     final_fasta_chunk = filter_sequences_by_aaf.out.filtered_fasta.filter{ it[1].size()>0 }
@@ -203,22 +207,32 @@ workflow build_reference_db {
 
 workflow predict_abundances {
 
-   take:
-     reference_ch
-     QUERY
-     final_selection
+  take:
+    reference_ch
+    QUERY
+    final_selection
 
-   main:
-     build_index(reference_ch)
-     kallisto_idx = build_index.out.kallisto_idx
-     kallisto_in = QUERY.combine(kallisto_idx).combine(final_selection)
+  main:
+    build_index(reference_ch)
+    kallisto_idx = build_index.out.kallisto_idx
 
-     kallisto_prediction(kallisto_in)
-     kallisto_log = kallisto_prediction.out.log.collectFile(name: "predict_abundances.log", storeDir: "${params.runinfo}")
-     prediction_ch = kallisto_prediction.out.prediction_ch
+    if (params.single_end) {
+      kallisto_in = QUERY.combine(kallisto_idx).combine(final_selection)
+      kallisto_prediction_single(kallisto_in)
+      kallisto_log = kallisto_prediction_single.out.log.collectFile(name: "predict_abundances.log", storeDir: "${params.runinfo}")
+      prediction_ch = kallisto_prediction_single.out.prediction_ch
+    }
+    else {
+      QUERY_data = QUERY.map{ it -> it[1] }
+      QUERY_name = QUERY.map{ it -> it[0]}
+      kallisto_in = QUERY_data.combine(kallisto_idx).combine(final_selection)
+      kallisto_prediction_paired(kallisto_in, QUERY_name)
+      kallisto_log = kallisto_prediction_paired.out.log.collectFile(name: "predict_abundances.log", storeDir: "${params.runinfo}")
+      prediction_ch = kallisto_prediction_paired.out.prediction_ch
+    }
 
-   emit:
-     prediction_ch
+  emit:
+    prediction_ch
  }
 
 
@@ -250,10 +264,9 @@ workflow {
     reference_ch.view()
   }
   else {
-    reference_ch = channel.fromPath("${params.reference}/*.fasta", checkIfExists: true)
-    final_selection_df = channel.fromPath("${params.reference}/*.csv", checkIfExists: true)
+    reference_ch = channel.fromPath("${params.databases}/build_reference/*.fasta", checkIfExists: true)
+    final_selection_df = channel.fromPath("${params.databases}/build_reference/*.csv", checkIfExists: true)
   }
-
 
   predict_abundances(reference_ch, QUERY, final_selection_df)
   prediction_ch = predict_abundances.out.prediction_ch
@@ -293,7 +306,7 @@ ______________________________________
 ______________________________________
 $summary
 Summary report:                 ${params.runinfo}/
-Lineage abundance predictions:  ${params.output}QUERY/kallisto_out/predictions.tsv
+Lineage abundance predictions:  ${params.output}/NAME_OF_QUERY/kallisto_out/predictions.tsv
 
 ______________________________________
 """.stripIndent()
@@ -313,33 +326,39 @@ def helpMSG() {
 
 
     Mandatory arguments:
-    --gisaid                    Path to folder storing metadata and sequence files from gisaid for reference building
-                                (file names: "*metadata*" (.tar.xz) and "*fasta*" (.fasta, .fasta.xz or .tar packed fasta)).
+    --gisaid                    Full system path to folder storing metadata and sequence files from gisaid for reference building
+                                Currently, metadata has to be tab-delimited CSV or TSV file and sequence info has to be FASTA or FASTA.gz
+                                Required columns: ['Virus name', 'Accession ID', 'Collection date', 'Location', 'Sequence length', 'Host', 'Pango lineage', 'N-Content']
     or
-    --reference                 Path to folder containing an already build reference metadata csv and reference fasta file
-    --query                     Path to folder storing query fastq files
-                                (fastq files are allowed to be .gz compressed)
+    --reference                 If true, the prebuilt reference in --databases is used to build an index and analyse the query
+                                [default: false]
+    --query                     Path to folder storing query FASTQ files
+                                (FASTQ files are allowed to be .gz compressed)
 
     Optional arguments:
     Input:
-    --desh                      Boolean parameter, if true, program includes DESH data into the reference building
+    --desh                      !!! UNDER CONSTRUCTION - NOT GUARANTEED TO WORK WITH CURRENT VERSION !!!
+                                Boolean parameter. If true, program includes DESH data into the reference building
                                 [default: false]
-    --desh_data                 Path to folder storing metadata, lineage data and sequence data from gisaid
+    --desh_data                 !!! UNDER CONSTRUCTION - NOT GUARANTEED TO WORK WITH CURRENT VERSION !!!
+                                Full system path to folder storing metadata, lineage data and sequence data from gisaid
                                 metadata filenames:     SARS-CoV-2-Sequenzdaten_Deutschland.csv.xz,
                                                         SARS-CoV-2-Entwicklungslinien_Deutschland.csv.xz,
                                 sequence data filename: "*fasta*" (.fasta, .fasta.xz or .tar packed fasta))
                                 [default: empty str]
-    --gisaid_desh_map           Path to .csv file mapping accession ids of overlapping samples between desh and gisaid.
+    --gisaid_desh_map           !!! UNDER CONSTRUCTION - NOT GUARANTEED TO WORK WITH CURRENT VERSION !!!
+                                Full system path to .csv file mapping accession ids of overlapping samples between desh and gisaid.
                                 ATTENTION: If desh input is provided, it is recommended to also input such a mapping
                                 file to avoid duplicates in the reference set! [default: empty str]
+
     Reference building:
     --continent                 List of comma-separated continents to consider when selecting reference samples based
-                                on geography. Inform yourself how country names are captured by GISAID.
+                                on geography. Inform yourself how continents are captured by your input data resource.
                                 Whitespaces in country names need to be replaced by underscore.
                                 Example: "North_America"
                                 [default: empty str]
     --country                   List of comma-separated countries to consider when selecting reference samples based
-                                on geography. Inform yourself how country names are captured by GISAID.
+                                on geography. Inform yourself how countries are captured by your input data resource.
                                 Whitespaces in country names need to be replaced by underscore.
                                 Example: "Bosnia_Herzegovina"
                                 [default: empty str]
@@ -351,21 +370,27 @@ def helpMSG() {
                                 [default: 29500]
     --k                         Specify how many samples to randomly select per lineage when filtering based on metadata.
                                 [default: 1000]
-    --seed                      Random seed for sequence selection (see --k). [default: 0]
+    --seed                      Random seed for sampling steps during sequence selection (see --k). [default: 0]
     --min_aaf                   Minimal alternative allele frequency (AAF) to consider for representative lineage variation.
                                 [default: 0.5]
     --max_per_lineage           Maximum number of lineages to select to represent a lineages genomic variation.
-                                [default: 100]
+                                [default: 0]
     Kallisto:
+    --single_end                If true, run kallisto parametrized for single-end reads, else for paired-end reads
+                                [default: true]
+    Currently, only the following kallisto parameters are adjustable via command line parameters:
     --fragment_length           Estimated average fragment length. [default: 200]
     --fragment_length_sd        Estimated standard deviation of fragment length. [default: 20]
     --kallisto_threads          Number of threads to use. [default: 20]
                                 For more information on kallisto, e.g. regarding single and paired-end fastq queries, see
                                 https://pachterlab.github.io/kallisto/manual
+    --bootstrap                 Determine whether kallisto should be run in bootstrap mode and how many bootstraps should be used.
+                                [default: 0]
+    For more information on kallisto, see https://pachterlab.github.io/kallisto/manual
+
     Output:
     --min_ab                    Summarize output for all lineages whose estimated abundance is above this minimum threshold.
                                 [default: 0]
-
 
     Nextflow options:
     --output                    path to output folder

@@ -30,11 +30,12 @@ process process_gisaid {
     echo "_______________________________________________________________"
     echo "--- Process GISAID data"
 
-    tar --exclude='readme.txt' -xhf ${meta}
+    #tar --exclude='readme.txt' -xhf ${meta}
 
-    process_gisaid.py -meta metadata.tsv
+    #process_gisaid.py -meta metadata.tsv
+    process_gisaid.py -meta $meta
 
-    rm metadata.tsv
+    #rm metadata.tsv
     """
 
 }

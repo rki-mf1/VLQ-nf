@@ -71,7 +71,8 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
     print('remove duplicate sequences')
     # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
     #df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
-    df.drop_duplicates(subset=["Accession ID"],inplace=True,ignore_index=True, keep=False)
+    df = df.sort_values(by='nonN', ascending=False)
+    df = df.drop_duplicates(subset=["Accession ID"],ignore_index=True)
     #print('add fasta sequence header for mapping')
     #df['fasta_id'] = df[['Virus name', 'Collection date', 'Submission date']].apply(lambda x: '|'.join(x), axis=1)
     ####### NOTE: removed since currently working on GISAID data from RKI API where fasta id == EPI_ISL id

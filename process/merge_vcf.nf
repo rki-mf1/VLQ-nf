@@ -7,7 +7,7 @@ process merge_vcf {
 
   output:
   path "${lineage}_merged.vcf.gz"
-  path "${lineage}_merged.frq"
+  //path "${lineage}_merged.frq"
   val lineage, emit: lineage
   path ".command.log", emit: log
 
@@ -28,11 +28,8 @@ process merge_vcf {
     done
     bcftools merge -o ${lineage}_merged.vcf.gz -O z ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz
   fi
-  # TODO: site-pi information needed?
   vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --site-pi
-  vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --freq
-
-  rm ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz*
+  #vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --freq
 
   """
 

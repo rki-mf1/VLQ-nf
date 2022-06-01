@@ -27,10 +27,11 @@ def main():
     parser.add_argument('--max_per_lineage', default=0, type=int, help="maximum number of sequences per lineage")
     parser.add_argument('--min_aaf', default=0.5, type=float, help="minimal alternative allele frequency (AAF) to consider relevant variation")
     args = parser.parse_args()
-    random.seed(0)
+
     print("read data")
     vcf_list = [ glob(file)[0] for file in args.vcf]
     metadata_df = pd.read_csv(args.metadata[0], header=0, sep='\t',dtype={'record_id':str, 'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
+
     random.seed(0)
     selection_df = select_ref_genomes(metadata_df, vcf_list, args.min_aaf, args.max_per_lineage)
     selection_df.to_csv('aaf_selection.csv', sep='\t', index=False)
@@ -50,6 +51,7 @@ def select_ref_genomes(meta_df, vcf_list, min_aaf, max_per_lineage):
     minimal_set = []
     repertoire_per_lineage = {}
     lineage_without_passing_variants = {}
+
     for lin_id in lineages:
         print(f"Begin aaf filtering for lineage {lin_id}")
         try:
@@ -57,7 +59,6 @@ def select_ref_genomes(meta_df, vcf_list, min_aaf, max_per_lineage):
         except KeyError as e:
             print("WARNING: skipping lineage {}, VCF info missing".format(lin_id))
             continue
-
         lin_samples = meta_df.loc[meta_df["lineage"] == lin_id]
         lin_samples = lin_samples.sort_values(by=["nonN", "date", "record_id"], ascending=False)
         vcf_reader = vcf.Reader(open(vcf_file, 'rb'))
@@ -106,9 +107,9 @@ def select_ref_genomes(meta_df, vcf_list, min_aaf, max_per_lineage):
                     df_for_minimal_selection = df_for_minimal_selection.loc[df_for_minimal_selection['record_id']!=seq_selected]
                     df_for_minimal_selection = df_for_minimal_selection[~df_for_minimal_selection['POS:GT'].isin(captured_vars)]
                     print(f"Remaining variants to cover: {df_for_minimal_selection['POS:GT'].unique()} ")
-                min = len(seqs_per_lineage[lin_id])
-                minimal_set.append(min)
-                print(f"{lin_id} minimum # sequences necessary to capture every important variant at least once = {min}")
+                min_selection = len(seqs_per_lineage[lin_id])
+                minimal_set.append(min_selection)
+                print(f"{lin_id} minimum # sequences necessary to capture every important variant at least once = {min_selection}")
                 repertoire_per_lineage[lin_id] = variant_sample_df.loc[~variant_sample_df['record_id'].isin(seqs_per_lineage[lin_id])]
                 print(f"Added {len(repertoire_per_lineage[lin_id]['record_id'].unique())} seq to {lin_id} repertoire")
             else:
@@ -116,11 +117,13 @@ def select_ref_genomes(meta_df, vcf_list, min_aaf, max_per_lineage):
         else:
             lineage_without_passing_variants[lin_id] = lin_samples['record_id'].values
             print(f"ATTENTION: No sequences selected for {lin_id} due to no variants passing the AAF filter")
+
     # increase reference up to the largest minimal reference or the pre-determined maximum #seqs
     max_no_seqs = max(max(minimal_set), max_per_lineage)
     for k in lineage_without_passing_variants.keys():
         v = list(lineage_without_passing_variants[k])
-        seqs_per_lineage[k] = random.sample(v,max_no_seqs)
+        no_seqs = min(len(v), max_no_seqs)
+        seqs_per_lineage[k] = random.sample(v, no_seqs)
     print(f"Select up to {max_no_seqs} samples per lineage")
     for lin_id,var_dict in repertoire_per_lineage.items():
         diff = max_no_seqs - len(seqs_per_lineage[lin_id])

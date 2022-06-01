@@ -53,9 +53,7 @@ def main():
             #    header[1] = header[1].replace('_',' ')
             #    seqname = '/'.join(header)
             if args.metadata:
-                print(seqname)
                 variant = df.loc[df["record_id"] == seqname]["lineage"]
-                print(variant)
                 variant = variant.iloc[0]
             else:
                 variant = seqname

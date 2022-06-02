@@ -1,6 +1,6 @@
 
 # sc2-sewage
-Estimate sc2 lineage abundances from wastewater samples
+Estimates sc2 lineage abundances from wastewater samples. The implemented pipeline is based on the [manuscript](https://www.medrxiv.org/content/10.1101/2021.08.31.21262938v1.full.pdf) and [code](https://github.com/baymlab/wastewater_analysis) by Baaijens, Zulli, Ott et al..
 
 ## Summary
 The goal is to detect sc2 lineages from wastewater samples and estimate the abundance of each lineage within a sample. The implemented method repurposes the kallisto tool. In a first step, a reference index containing multiple sequences for multiple sc2 lineages is reconstructed from GISAID data. In the second step, a kallisto index is built and FASTQ samples are pseudo-aligned to estimate the abundance of each reference lineage in the samples.

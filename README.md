@@ -1,5 +1,7 @@
 # sc2_sewage
-Estiamte sc2 lineage abundances from wastewater samples
+Estiamte sc2 lineage abundances from wastewater samples.
+The implemented pipeline is based on the [manuscript](https://www.medrxiv.org/content/10.1101/2021.08.31.21262938v1.full.pdf) and [code](https://github.com/baymlab/wastewater_analysis) by Baaijens, Zulli, Ott et al..
+The code in this branch represents the pipeline at an early development stage before we started transforming it into a Nextflow workflow. This branch does not implement the same pipeline as the Nextflow branch.
 
 # Requirements
 * [GISAID](https://www.epicov.org/epi3/frontend#2a39e0) data (fasta) and metadata (tsv)

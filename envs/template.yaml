@@ -1,0 +1,10 @@
+name: template
+channels:
+  - conda-forge
+  - anaconda
+  - defaults
+
+
+dependencies:
+  - biopython>=1.78
+  - pyvcf>=0.6.8

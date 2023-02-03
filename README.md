@@ -1,9 +1,11 @@
 
-# sc2-sewage
-Estimates sc2 lineage abundances from wastewater samples. The implemented pipeline is based on the [manuscript](https://www.medrxiv.org/content/10.1101/2021.08.31.21262938v1.full.pdf) and [code](https://github.com/baymlab/wastewater_analysis) by Baaijens, Zulli, Ott et al..
+# VLQ-nf
+
+Estimates SARS-CoV-2 lineage abundances from wastewater samples. Here, we provide a Nextflow pipeline implementation of the original idea by Baaijens, Zulli, Ott _et al_. Please check their [manuscript](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02805-9) and [code](https://github.com/baymlab/wastewater_analysis) and acknowledge their work and cite their paper when using anything from this repository! 
 
 ## Summary
-The goal is to detect sc2 lineages from wastewater samples and estimate the abundance of each lineage within a sample. The implemented method repurposes the kallisto tool. In a first step, a reference index containing multiple sequences for multiple sc2 lineages is reconstructed from GISAID data. In the second step, a kallisto index is built and FASTQ samples are pseudo-aligned to estimate the abundance of each reference lineage in the samples.
+
+The goal is to detect SARS-CoV-2 lineages from wastewater samples and estimate the abundance of each lineage within a sample. The implemented method repurposes the [Kallisto](https://pachterlab.github.io/kallisto) tool like first presented by [Baaijens, Zulli, Ott _et al_](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02805-9). In a first step, a reference index containing multiple sequences for multiple SARS-CoV-2 lineages is reconstructed from [GISAID](https://gisaid.org/) data. In the second step, a Kallisto index is built and FASTQ samples are pseudo-aligned to estimate the abundance of each reference lineage in the samples.
 
 ## Program Composition
 * main.nf: main script called by user
@@ -28,23 +30,29 @@ The goal is to detect sc2 lineages from wastewater samples and estimate the abun
 
 
 ## Requirements
-This tool was developed and tested on nextflow (v.21.10.6) and conda (v.4.12.0).
+This tool was developed and tested on Nextflow (v.21.10.6) and Conda (v.4.12.0).
 
 ## Usage
 First, create a conda environment ensuring all required packages and versions. Activate and run workflow in the conda env:
-```
+
+```bash
 conda create -n sc2-sewage -c bioconda -c anaconda -c conda-forge bcftools=1.3.1 biopython=1.78 htslib=1.3.1 kallisto=0.46.0 minimap2=2.17 pandas=1.1.3 pyvcf seqtk=1.3 gzip glob2=0.7
 conda activate sc2-sewage
 ```
+
 Execute program like this for using only GISAID data:
-```
+
+```bash
 nextflow run main.nf --gisaid /PATH/TO/GISAID_DATA/ --query test/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
 ```
+
 **UNDER CONSTRUCTION:**
 *Execute like this for using both GISAID and DESH as data sources:*
-```
+
+```bash
 nextflow run main.nf --desh /PATH/TO/GISAID_DATA/ --desh true --desh_data /PATH/TO/DESH_DATA/ --gisaid_desh_map /PATH/TO/MAPPING/FILE --query test/ --country Germany,England --startdate 2021-02-01 --enddate 2021-04-30
 ```
+
 ## Data:
 * [**GISAID**](https://www.epicov.org/epi3/frontend#2a39e0): download data set with sequence data (FASTA, FASTA.GZ) and metadata (tab-delimited CSV, Required columns: ['Virus name', 'Accession ID', 'Collection date', 'Location', 'Sequence length', 'Host', 'Pango lineage', 'N-Content'])
 **ATTENTION**: The FASTA headers nee to be the EPI_ISL Accession IDs.
@@ -113,5 +121,5 @@ nextflow run main.nf --gisaid example/resource --query example/samples --k 10 --
 The predictions can be found in ``kallisto/predictions.tsv`` and should show that 100% of this sample is SARS-CoV-2.
 
 ## References
-* [Variant abundance estimation for SARS-CoV-2 in 1 wastewater using RNA-Seq quantification](https://www.medrxiv.org/content/10.1101/2021.08.31.21262938v1.full.pdf)
-* [GitHub Repository: SARS-CoV-2 variant abundance estimation in wastewater](https://github.com/baymlab/wastewater_analysis)
+* [Variant abundance estimation for SARS-CoV-2 in wastewater using RNA-Seq quantification](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02805-9)
+* [Original GitHub repository: SARS-CoV-2 variant abundance estimation in wastewater](https://github.com/baymlab/wastewater_analysis)

@@ -18,19 +18,16 @@ process merge_vcf {
   # Source: https://github.com/baymlab/wastewater_analysis
   #############################################
   echo "# Merge all vcf files for lineage ${lineage}"
-  sample_count=\$(ls ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz | wc -l)
+  sample_count=\$(ls ${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz | wc -l)
 
   if [[ \$sample_count -eq 1 ]]; then
-    cp ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz ${lineage}_merged.vcf.gz
+    cp ${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz ${lineage}_merged.vcf.gz
   elif [[ \$sample_count -gt 1 ]]; then
-    for file in ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz; do
+    for file in ${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz; do
       bcftools index -f \$file
     done
-    bcftools merge -o ${lineage}_merged.vcf.gz -O z ${projectDir}/${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz
+    bcftools merge -o ${lineage}_merged.vcf.gz -O z ${params.databases}/build_reference/vcf/${lineage}_*_merged.vcf.gz
   fi
-  vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --site-pi
-  #vcftools --gzvcf ${lineage}_merged.vcf.gz --out ${lineage}_merged --freq
-
   """
 
 }

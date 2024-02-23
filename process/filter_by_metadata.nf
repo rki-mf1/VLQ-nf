@@ -3,7 +3,6 @@ process filter_by_metadata {
 
   
   input:
-  path desh_df
   path gisaid_df
 
   output:
@@ -11,22 +10,11 @@ process filter_by_metadata {
   path ".command.log"
 
   script:
-  if ("${desh_df.simpleName}" == 'DUMMY')
-    """
-    #!/bin/bash
-    echo "_______________________________________________________________"
-    echo "--- Filter samples by metadata"
+  """
+  #!/bin/bash
+  echo "_______________________________________________________________"
+  echo "--- Filter samples by metadata"
 
-    filter_by_metadata.py -gisaid $gisaid_df --continent $params.continent --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
-    """
-
-  else
-    """
-    #!/bin/bash
-    echo "_______________________________________________________________"
-    echo "# Filter samples by metadata"
-
-    filter_by_metadata.py -gisaid $gisaid_df -desh $desh_df --continent $params.continent --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
-    """
-
+  filter_by_metadata.py -gisaid $gisaid_df --continent $params.continent --country $params.country --startdate $params.startdate --enddate $params.enddate --min_len $params.min_len -k $params.k --seed $params.seed
+  """
 }

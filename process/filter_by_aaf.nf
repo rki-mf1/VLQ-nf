@@ -16,7 +16,7 @@ process filter_by_aaf {
   echo "_______________________________________________________________"
   echo "--- Filter lineage-representative samples based on alternate allele frequencies"
 
-  filter_by_aaf.py --metadata $selection_df --vcf ${projectDir}/${params.databases}/build_reference/merged_vcf/*_merged.vcf.gz --min_aaf $params.min_aaf --max_per_lineage $params.max_per_lineage
+  filter_by_aaf.py --metadata $selection_df --vcf ${params.databases}/build_reference/merged_vcf/*_merged.vcf.gz --min_aaf $params.min_aaf --max_per_lineage $params.max_per_lineage
 
   """
 

@@ -12,8 +12,6 @@ process variant_call {
 
   script:
   """
-  #!/bin/env bash
-
   ##############################################
   # Source: https://github.com/baymlab/wastewater_analysis
   #############################################

@@ -11,7 +11,6 @@ process filter_by_metadata {
 
   script:
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "--- Filter samples by metadata"
 

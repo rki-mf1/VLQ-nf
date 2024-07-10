@@ -12,7 +12,6 @@ process filter_by_aaf {
 
   script:
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "--- Filter lineage-representative samples based on alternate allele frequencies"
 

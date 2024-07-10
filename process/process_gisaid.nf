@@ -11,7 +11,6 @@ process process_gisaid {
 
   script:
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "--- Process GISAID data"
 

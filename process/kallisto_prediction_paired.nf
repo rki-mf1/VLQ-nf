@@ -15,7 +15,6 @@ process kallisto_prediction_paired {
   script:
 
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "Run kallisto"
   kallisto quant -t $params.kallisto_threads -i $ref_index -b $params.bootstrap -o kallisto_out/ $sample_1 $sample_2

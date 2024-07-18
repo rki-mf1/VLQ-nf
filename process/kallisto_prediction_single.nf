@@ -14,7 +14,6 @@ process kallisto_prediction_single {
   script:
 
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "Run kallisto"
   echo $sample

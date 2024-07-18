@@ -12,8 +12,7 @@ process merge_vcf {
   path ".command.log", emit: log
 
   script:
-  """
-  #!/bin/bash
+  """  
   ##############################################
   # Source: https://github.com/baymlab/wastewater_analysis
   #############################################

@@ -56,7 +56,7 @@ if (params.single_end) {
   QUERY = channel.fromPath("${params.query}/*.fastq*", checkIfExists: true)
 }
 else {
-  QUERY = channel.fromFilePairs("${params.query}/*{1,2}.fastq*", checkIfExists: true)
+  QUERY = channel.fromFilePairs("${params.query}/*_R{1,2}.fastq*", checkIfExists: true)
 }
 QUERY.view()
 

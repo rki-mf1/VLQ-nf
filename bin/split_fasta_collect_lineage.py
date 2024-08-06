@@ -12,7 +12,7 @@ from Bio import SeqIO
 ################################################
 def main():
     parser = argparse.ArgumentParser(description="Split multifasta and collect lineage annotation")
-    parser.add_argument('-meta, --meta', dest='meta', nargs=1, type=str, help="Specify path to desh sample metadata csv file")
+    parser.add_argument('-meta, --meta', dest='meta', nargs=1, type=str, help="Specify path to metadata csv file")
     parser.add_argument('-multifasta, --multifasta', dest='multifasta', nargs=1, type=str, help="Specify path to multifasta file")
     args = parser.parse_args()
     sample_metadata = args.meta[0]

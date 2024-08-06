@@ -11,7 +11,6 @@ process filter_sequences {
 
   script:
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "Filter sequences from multifasta"
 

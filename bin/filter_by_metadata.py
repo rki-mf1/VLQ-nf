@@ -17,7 +17,6 @@ import datetime as dt
 def main():
     parser = argparse.ArgumentParser(description="Preprocess reference collection: filter samples by temporal and geographical relevance, randomly select samples from remaining dataset.")
     parser.add_argument('-gisaid, --gisaid', dest='gisaid', nargs=1, type=str, help="Specify paths to gisaid metadata tsv file and sequence fasta file")
-    parser.add_argument('-desh, --desh', dest='desh', type=str, help="Specify paths to desh sample and lineage metadata csv files and desh sequence fasta file")
     parser.add_argument('--country', dest='country', nargs='*', type=str, help="only consider sequences found in specified list of comma separated countries")
     parser.add_argument('--continent', dest='continent', nargs='*', type=str, help="only consider sequences found in specified list of comma separated continents")
     parser.add_argument('--startdate', dest='startdate', nargs='*', type=str, help="only consider sequences found on or after this date; input should be ISO format")
@@ -28,12 +27,8 @@ def main():
     args = parser.parse_args()
 
     print('read data')
-    gisaid_df = pd.read_csv(args.gisaid[0], sep='\t', header=0, dtype={'record_id':str, 'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
-    if args.desh == None:
-        metadata_df = gisaid_df
-    else:
-        desh_df = pd.read_csv(args.desh, sep='\t', header=0, dtype={'record_id':str, 'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
-        metadata_df = pd.concat([gisaid_df, desh_df], axis=0)
+    metadata_df = pd.read_csv(args.gisaid[0], sep='\t', header=0, dtype={'record_id':str, 'nonN':int,'lineage':str,'date':str,'country':str, 'continent':str})
+
     lineages = metadata_df["lineage"].unique()
     metadata_df['date'] = pd.to_datetime(metadata_df['date'])
 
@@ -84,7 +79,6 @@ def main():
             selection_df = pd.concat([selection_df, selection], axis=0)
             lineages_with_sequence.append(lin_id)
     print("--- Sequences selected for {} lineages".format(len(lineages_with_sequence)))
-    # TODO: do we want to log how many samples were selected from GISAID and DESH, respectively?
     print("--- Total number of selected sequences: {} ".format(selection_df.shape[0]))
 
     # store filtered metadata

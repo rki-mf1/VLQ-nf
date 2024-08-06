@@ -17,21 +17,20 @@ import datetime as dt
 def main():
     parser = argparse.ArgumentParser(description="Preprocess GISAID reference collection: clean and format data, if DESH data is provided, remove duplicate EPI_ISL entries.")
     parser.add_argument('-meta, --meta', dest='meta', nargs=1, type=str, help="Specify path to gisaid metadata tsv file")
-    parser.add_argument('-epi_map, --epi_map', dest='epi_map', type=str, help="Specify path to csv file containing EPI ISL ids for the desh data set")
     args = parser.parse_args()
 
     print('read data')
     gisaid_metadata = args.meta[0]
 
     print('process gisaid metadata')
-    gisaid_df = read_filter_gisaid(gisaid_metadata, args.epi_map)
+    gisaid_df = read_filter_gisaid(gisaid_metadata)
     gisaid_df.to_csv('processed_gisaid_metadata.tsv', sep="\t", index=False)
 
     return None
 
 
 
-def read_filter_gisaid(metadata_file, epi_isl_file):
+def read_filter_gisaid(metadata_file):
     """
     Read gisaid metadata from tsv into dataframe, preprocess data
     """
@@ -40,11 +39,6 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
 
     print('consider only human samples')
     df = df.loc[df.Host == "Human"]
-
-    if epi_isl_file != None:
-        gisaid_ids = pd.read_csv(epi_isl_file, header=None, names=['EPI_ISL'])
-        print('remove sample records that are included in desh data set')
-        df = df.loc[~df['Accession ID'].isin(gisaid_ids['EPI_ISL'])]
 
     print("ensure correct data types for calculating number of non-ambiguous bases (Sequence length and N-Content)")
     df['Sequence length'] = df['Sequence length'].astype(float)
@@ -70,7 +64,6 @@ def read_filter_gisaid(metadata_file, epi_isl_file):
 
     print('remove duplicate sequences')
     # TODO: EPI id unique, but fasta header not...that's crazy. mighty keep the sample with lower N content but how to distinguish in fasta later? => tmp solution: drop both duplicates
-    #df.drop_duplicates(subset=["Virus name","date","Submission date"],inplace=True,ignore_index=True, keep=False)
     df = df.sort_values(by='nonN', ascending=False)
     df = df.drop_duplicates(subset=["Accession ID"],ignore_index=True)
     #print('add fasta sequence header for mapping')

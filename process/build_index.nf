@@ -12,7 +12,6 @@ process build_index {
 
   script:
   """
-  #!/bin/bash
   echo "_______________________________________________________________"
   echo "Build kallisto index"
 
